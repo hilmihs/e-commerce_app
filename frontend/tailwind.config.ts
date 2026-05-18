@@ -5,16 +5,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#172026",
-        muted: "#62727d",
-        line: "#d8e0e5",
-        surface: "#f6f8f9",
-        brand: "#1f6feb",
-        accent: "#0e9f6e",
-        warning: "#b7791f"
+        ink: "var(--ink)",
+        "ink-soft": "var(--ink-soft)",
+        muted: "var(--muted)",
+        "muted-2": "var(--muted-2)",
+        line: "var(--line)",
+        "line-soft": "var(--line-soft)",
+        paper: "var(--paper)",
+        "paper-soft": "var(--paper-soft)",
+        page: "var(--page)",
+        terracotta: "var(--terracotta)",
+        olive: "var(--olive)",
+        gold: "var(--gold)",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        danger: "var(--danger)"
       },
-      boxShadow: {
-        panel: "0 14px 40px rgba(23, 32, 38, 0.08)"
+      fontFamily: {
+        display: ["var(--font-display)"],
+        sans: ["var(--font-body)"],
+        mono: ["var(--font-mono)"]
       }
     }
   },

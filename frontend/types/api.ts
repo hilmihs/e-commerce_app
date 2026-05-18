@@ -62,6 +62,42 @@ export type OrderSummary = {
   snap_redirect_url?: string | null;
 };
 
+export type OrderDetail = OrderSummary & {
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  shipping_address: {
+    line1: string;
+    line2?: string | null;
+    city: string;
+    province: string;
+    postal_code: string;
+    destination_city_id?: string;
+  } | null;
+  shipping_courier?: string | null;
+  shipping_service?: string | null;
+  shipping_description?: string | null;
+  shipping_etd?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  items: Array<{
+    id: number;
+    product_id: number;
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+  }>;
+  payment?: {
+    id: number;
+    provider: string;
+    transaction_id?: string | null;
+    status: string;
+    amount: number;
+    paid_at?: string | null;
+  } | null;
+};
+
 export type AdminSession = {
   token: string;
   user: {

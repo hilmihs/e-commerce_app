@@ -83,6 +83,12 @@ export const adminApi = {
   orders(token: string) {
     return request<{ data: OrderSummary[] }>("/admin/orders", { token, cache: "no-store" }).then((response) => response.data);
   },
+  order(token: string, id: number | string) {
+    return request<{ data: import("@/types/api").OrderDetail }>(`/admin/orders/${id}`, {
+      token,
+      cache: "no-store"
+    }).then((response) => response.data);
+  },
   updateOrderStatus(token: string, id: number, status: string) {
     return request<{ data: OrderSummary }>(`/admin/orders/${id}/status`, {
       method: "PATCH",

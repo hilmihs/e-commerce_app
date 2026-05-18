@@ -13,16 +13,32 @@ export function AdminGuard({ children }: { children: (session: AdminSession) => 
   }, []);
 
   if (session === undefined) {
-    return <div className="mx-auto max-w-6xl px-4 py-8 text-muted">Memeriksa sesi admin...</div>;
+    return (
+      <div style={{ padding: 40, color: "var(--muted)", textAlign: "center" }}>
+        Memeriksa sesi admin…
+      </div>
+    );
   }
 
   if (!session) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-12">
-        <div className="rounded border border-line bg-white p-6 text-center">
-          <h1 className="text-xl font-semibold">Admin session diperlukan</h1>
-          <Link className="mt-4 inline-block rounded bg-ink px-4 py-2 font-semibold text-white" href="/admin/login">
-            Login
+      <div
+        style={{
+          minHeight: "60vh",
+          display: "grid",
+          placeItems: "center",
+          padding: 40
+        }}
+      >
+        <div className="tn-card" style={{ padding: 32, textAlign: "center", maxWidth: 420 }}>
+          <h1 className="tn-display-4" style={{ marginBottom: 12 }}>
+            Sesi <em style={{ fontStyle: "italic" }}>admin</em> diperlukan
+          </h1>
+          <p className="tn-body-sm" style={{ marginBottom: 20 }}>
+            Halaman ini terbatas untuk pengelola Toko Nusa.
+          </p>
+          <Link className="tn-btn" href="/admin/login">
+            Masuk
           </Link>
         </div>
       </div>
