@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: tokonusa-api
+    runtime: docker
+    rootDir: backend
+    plan: starter
+    healthCheckPath: /up
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_KEY
+        sync: false
+      - key: MIDTRANS_SERVER_KEY
+        sync: false
+      - key: RAJAONGKIR_API_KEY
+        sync: false
