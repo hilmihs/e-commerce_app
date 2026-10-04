@@ -5,6 +5,12 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
+// On a serverless filesystem only /tmp is writable, and Laravel wants to write
+// its caches, compiled views and logs under storage/. Redirect the whole tree.
+if (($_ENV['VERCEL'] ?? getenv('VERCEL')) !== false && ($_ENV['VERCEL'] ?? getenv('VERCEL'))) {
+    $_ENV['APP_STORAGE_PATH'] = '/tmp/storage';
+}
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
@@ -22,4 +28,5 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })->create()
+    ->useStoragePath($_ENV['APP_STORAGE_PATH'] ?? base_path('storage'));
