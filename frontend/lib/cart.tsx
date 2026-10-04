@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import type { CartItem, Product } from "@/types/api";
+import { SESSION_CLEARED_EVENT } from "@/lib/session";
+import { registerMockProductHint } from "@/lib/mock-checkout";
 
 type CartState = {
   items: CartItem[];
@@ -89,6 +91,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items));
     }
   }, [state.hydrated, state.items]);
+
+  // Wipe cart when the session is cleared (sign-out), regardless of role.
+  useEffect(() => {
+    const onCleared = () => dispatch({ type: "clear" });
+    window.addEventListener(SESSION_CLEARED_EVENT, onCleared);
+    return () => window.removeEventListener(SESSION_CLEARED_EVENT, onCleared);
+  }, []);
+
+  // Keep the mock-checkout module aware of current cart products so a dummy
+  // checkout can record product names + prices in the saved order.
+  useEffect(() => {
+    registerMockProductHint(
+      state.items.map((i) => ({ id: i.product.id, name: i.product.name, price: i.product.price }))
+    );
+  }, [state.items]);
 
   const value = useMemo<CartContextValue>(() => {
     const subtotal = state.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);

@@ -11,21 +11,18 @@ export function NewsletterForm() {
     e.preventDefault();
     if (!email) return;
     push({
-      message: `${email} terdaftar untuk edisi jurnal berikutnya.`,
+      message: `${email} subscribed to the next issue.`,
       tone: "success"
     });
     setEmail("");
   }
 
   return (
-    <form
-      onSubmit={submit}
-      style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
-    >
+    <form onSubmit={submit} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
       <input
         className="tn-input"
         type="email"
-        placeholder="alamat@email.kamu"
+        placeholder="your@email.com"
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -42,7 +39,7 @@ export function NewsletterForm() {
         className="tn-btn"
         style={{ background: "var(--paper)", color: "var(--ink)", borderColor: "var(--paper)" }}
       >
-        Berlangganan
+        Subscribe
       </button>
     </form>
   );

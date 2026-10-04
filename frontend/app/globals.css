@@ -11,7 +11,9 @@
   --page:         #faf6ee;
   --ink:          #1e1a14;
   --ink-soft:     #3a342a;
-  --muted:        #6b6253;
+  /* Darkened from #6b6253 → #5a5145 to meet WCAG AA (4.5:1) on both
+     --paper and --paper-soft surfaces. */
+  --muted:        #5a5145;
   --muted-2:      #8a8170;
   --line:         #ddd0bd;
   --line-soft:    #e8dfcd;
@@ -37,6 +39,11 @@
 
 * { box-sizing: border-box; }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 96px;
+}
+
 html, body {
   margin: 0;
   min-height: 100vh;
@@ -47,6 +54,10 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv11", "kern";
   line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
 }
 
 h1, h2, h3, h4 {
@@ -305,8 +316,257 @@ button { font-family: inherit; }
   background-size: 100% 1.5px;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Modern motion · scroll reveals, marquee, image masks
+   ───────────────────────────────────────────────────────────── */
+
+/* scroll-reveal — bidirectional. Hidden state when out of view,
+   visible state when entering viewport. Re-fires on every direction. */
+.tn-reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity .85s cubic-bezier(.16,.84,.24,1),
+              transform .85s cubic-bezier(.16,.84,.24,1);
+  will-change: opacity, transform;
+}
+.tn-reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+.tn-reveal-left  { transform: translateY(0) translateX(-36px); }
+.tn-reveal-left.is-visible  { transform: translateY(0) translateX(0); }
+.tn-reveal-right { transform: translateY(0) translateX(36px); }
+.tn-reveal-right.is-visible { transform: translateY(0) translateX(0); }
+
+.tn-reveal-scale { transform: scale(.94); }
+.tn-reveal-scale.is-visible { transform: scale(1); }
+
+/* image clip reveal — wipes from bottom on visible */
+.tn-clip-reveal {
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 1.1s cubic-bezier(.7,0,.2,1);
+}
+.tn-clip-reveal.is-visible { clip-path: inset(0 0 0 0); }
+
+/* slow ken-burns drift for hero imagery */
+@keyframes tn-kenburns {
+  0%   { transform: scale(1)    translate3d(0,0,0); }
+  50%  { transform: scale(1.04) translate3d(-1%, 0.5%, 0); }
+  100% { transform: scale(1)    translate3d(0,0,0); }
+}
+.tn-kenburns img,
+.tn-kenburns > .tn-bg-img {
+  animation: tn-kenburns 18s ease-in-out infinite;
+}
+
+/* gentle float for callouts */
+@keyframes tn-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.tn-float { animation: tn-float 5s ease-in-out infinite; }
+
+/* marquee — infinite horizontal slide */
+@keyframes tn-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+.tn-marquee {
+  display: flex;
+  width: max-content;
+  animation: tn-marquee 32s linear infinite;
+  /* Keep duplicates seam-free: no shrinking, no line wrapping. */
+  white-space: nowrap;
+  will-change: transform;
+}
+.tn-marquee > * {
+  flex: 0 0 auto;
+}
+.tn-marquee-mask {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent);
+}
+
+/* letter stagger reveal — pure CSS so it works without JS hydration.
+   `both` keeps the from-state on first paint (no FOUC of full-opacity title)
+   AND retains the final state after animation. */
+@keyframes tn-letter-rise {
+  from { opacity: 0; transform: translateY(120%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tn-stagger > *:not(br) {
+  display: inline-block;
+  animation: tn-letter-rise .8s cubic-bezier(.2,.7,.2,1) both;
+}
+/* Don't pull invisible glyphs into screen-reader output during the fade — the
+   element is still in the accessibility tree. */
+@media (prefers-reduced-motion: reduce) {
+  .tn-stagger > *:not(br) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* underline grow on hover */
+.tn-link-grow {
+  position: relative;
+  display: inline-block;
+}
+.tn-link-grow::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform .45s cubic-bezier(.7,0,.2,1);
+}
+.tn-link-grow:hover::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+/* product card refinement */
+.tn-card-hover { transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s ease; }
+.tn-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 28px 60px -28px rgba(30,26,20,0.28);
+}
+.tn-img-zoom > * { transition: transform .9s cubic-bezier(.2,.7,.2,1); }
+.tn-img-zoom:hover > * { transform: scale(1.06); }
+
+/* category cards — left bar accent on hover */
+.tn-cat-card { position: relative; transition: padding-left .35s ease, background .35s ease; }
+.tn-cat-card::before {
+  content: "";
+  position: absolute;
+  left: 6px; top: 20px; bottom: 20px;
+  width: 2px;
+  background: var(--terracotta);
+  transform: scaleY(0);
+  transform-origin: bottom center;
+  transition: transform .45s cubic-bezier(.7,0,.2,1);
+}
+.tn-cat-card:hover::before { transform: scaleY(1); transform-origin: top center; }
+.tn-cat-card:hover { padding-left: 26px !important; }
+
+/* footer link — gentle underline on hover */
+.tn-footer-link {
+  position: relative;
+  transition: color .2s ease;
+}
+.tn-footer-link::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform .35s cubic-bezier(.7,0,.2,1);
+}
+.tn-footer-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+/* nav link — animated underline (LTR sweep on hover, hold when active) */
+.tn-nav-link {
+  position: relative;
+  padding: 4px 0 6px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  text-decoration: none;
+  transition: color .25s ease;
+}
+.tn-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform .45s cubic-bezier(.7,0,.2,1);
+}
+.tn-nav-link:hover {
+  color: var(--ink);
+}
+.tn-nav-link:hover::after,
+.tn-nav-link[data-active="true"]::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+.tn-nav-link[data-active="true"] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* Route fade for Next.js client-side soft navigation (RouteTransition.tsx).
+   We deliberately do NOT use the @view-transition CSS rule — it fires on
+   full-page reloads too and would double up with the JS-driven crossfade. */
+@keyframes tn-route-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tn-route-transition {
+  animation: tn-route-enter .42s cubic-bezier(.16,.84,.24,1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tn-route-transition { animation: none; }
+}
+
+/* button shimmer */
+.tn-btn { position: relative; overflow: hidden; isolation: isolate; }
+.tn-btn::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(245,239,228,0.22) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform .7s ease;
+  z-index: -1;
+}
+.tn-btn:hover::after { transform: translateX(120%); }
+
+/* image — modern fade-in once decoded */
+.tn-img-fade {
+  opacity: 0;
+  transition: opacity .8s ease;
+}
+.tn-img-fade.is-loaded { opacity: 1; }
+
 /* prefers reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .tn-fade-up, .tn-skeleton, .tn-toast { animation: none !important; }
-  .tn-card-hover, .tn-img-zoom > *, .tn-chip, .tn-btn, .tn-btn-link { transition: none !important; }
+  .tn-fade-up, .tn-skeleton, .tn-toast,
+  .tn-marquee, .tn-float, .tn-stagger > *,
+  .tn-kenburns img, .tn-kenburns > .tn-bg-img { animation: none !important; }
+  .tn-reveal, .tn-clip-reveal, .tn-card-hover, .tn-img-zoom > *,
+  .tn-chip, .tn-btn, .tn-btn-link, .tn-link-grow::after,
+  .tn-cat-card, .tn-cat-card::before, .tn-img-fade { transition: none !important; }
+  .tn-reveal { opacity: 1; transform: none; }
+  .tn-clip-reveal { clip-path: inset(0 0 0 0); }
+}
+
+/* Mobile header — hamburger replaces wrapped nav, action labels collapse to icons */
+.tn-nav-mobile-toggle { display: none; }
+
+@media (max-width: 768px) {
+  .tn-header-main { padding: 12px 16px !important; gap: 12px !important; }
+  .tn-nav-desktop { display: none !important; }
+  .tn-nav-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .tn-action-label { display: none !important; }
+  .tn-action-group { gap: 14px !important; }
 }

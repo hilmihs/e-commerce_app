@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { AdminGuard } from "@/components/AdminGuard";
+import { AdminGuard, DemoModeBanner } from "@/components/AdminGuard";
 import { AdminShell } from "@/components/AdminShell";
 import { adminApi, formatCurrency } from "@/lib/api";
 import { SumRow } from "@/components/design";
@@ -20,12 +20,12 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending_payment: "Menunggu bayar",
-  paid: "Dibayar",
-  processing: "Dikemas",
-  shipped: "Dikirim",
-  completed: "Selesai",
-  cancelled: "Batal"
+  pending_payment: "Pending payment",
+  paid: "Paid",
+  processing: "Packing",
+  shipped: "Shipped",
+  completed: "Completed",
+  cancelled: "Cancelled"
 };
 
 const STATUS_OPTIONS = [
@@ -37,29 +37,33 @@ const STATUS_OPTIONS = [
   "cancelled"
 ];
 
-function OrderDetailView({ session, id }: { session: AdminSession; id: string }) {
+function OrderDetailView({ session, id, isDemo }: { session: AdminSession; id: string; isDemo: boolean }) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (isDemo) {
+      setError("Demo session — no backend order data available.");
+      return;
+    }
     adminApi
       .order(session.token, id)
       .then(setOrder)
       .catch((caught) =>
-        setError(caught instanceof Error ? caught.message : "Pesanan tidak ditemukan.")
+        setError(caught instanceof Error ? caught.message : "Order not found.")
       );
-  }, [session.token, id]);
+  }, [session.token, id, isDemo]);
 
   async function changeStatus(status: string) {
-    if (!order) return;
+    if (!order || isDemo) return;
     setSaving(true);
     try {
       const updated = await adminApi.updateOrderStatus(session.token, order.id, status);
       setOrder((current) => (current ? { ...current, ...updated } : current));
       setError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Gagal update status.");
+      setError(caught instanceof Error ? caught.message : "Status update failed.");
     } finally {
       setSaving(false);
     }
@@ -67,7 +71,8 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
 
   if (error) {
     return (
-      <AdminShell subtitle="Pesanan" title={<>Tidak <em style={{ fontStyle: "italic" }}>ditemukan</em>.</>}>
+      <AdminShell subtitle="Order" title={<>Not <em style={{ fontStyle: "italic" }}>found</em>.</>}>
+        {isDemo && <DemoModeBanner />}
         <div
           style={{
             padding: 20,
@@ -84,7 +89,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
           className="tn-btn-link"
           style={{ display: "inline-flex", gap: 6, marginTop: 16, fontSize: 13 }}
         >
-          <ArrowLeft size={14} /> Kembali ke daftar pesanan
+          <ArrowLeft size={14} /> Back to orders
         </Link>
       </AdminShell>
     );
@@ -92,7 +97,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
 
   if (!order) {
     return (
-      <AdminShell subtitle="Memuat" title={<>Memuat <em style={{ fontStyle: "italic" }}>pesanan</em>…</>}>
+      <AdminShell subtitle="Loading" title={<>Loading <em style={{ fontStyle: "italic" }}>order</em>…</>}>
         <div className="tn-skeleton" style={{ width: "100%", height: 280, marginBottom: 18 }} />
         <div className="tn-skeleton" style={{ width: "60%", height: 18 }} />
       </AdminShell>
@@ -101,7 +106,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
 
   return (
     <AdminShell
-      subtitle={`Pesanan · ${new Date(order.created_at ?? Date.now()).toLocaleDateString("id-ID")}`}
+      subtitle={`Order · ${new Date(order.created_at ?? Date.now()).toLocaleDateString("en-US")}`}
       title={
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 32, letterSpacing: "0.02em" }}>
           {order.order_number}
@@ -113,7 +118,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
           className="tn-btn tn-btn-ghost"
           style={{ display: "inline-flex", gap: 6 }}
         >
-          <ArrowLeft size={14} /> Daftar pesanan
+          <ArrowLeft size={14} /> Back to orders
         </Link>
       }
     >
@@ -135,7 +140,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
             >
               <div>
                 <div className="tn-label-mono" style={{ fontSize: 11, marginBottom: 8 }}>
-                  STATUS PESANAN
+                  ORDER STATUS
                 </div>
                 <div
                   style={{
@@ -160,12 +165,12 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
                   {STATUS_LABEL[order.status] ?? order.status}
                 </div>
                 <div className="tn-label-mono" style={{ fontSize: 11, marginTop: 12 }}>
-                  STATUS BAYAR · {order.payment_status.toUpperCase()}
+                  PAYMENT · {order.payment_status.toUpperCase()}
                 </div>
               </div>
               <div>
                 <div className="tn-eyebrow" style={{ marginBottom: 8 }}>
-                  Ubah status
+                  Change status
                 </div>
                 <select
                   className="tn-input"
@@ -188,7 +193,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
           <div className="tn-card" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ padding: "20px 24px 12px" }}>
               <h3 className="tn-display-5">
-                Isi <em style={{ fontStyle: "italic" }}>pesanan</em>
+                Order <em style={{ fontStyle: "italic" }}>items</em>
               </h3>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -202,7 +207,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
                     textTransform: "uppercase"
                   }}
                 >
-                  {["Produk", "Qty", "Harga", "Subtotal"].map((h) => (
+                  {["Product", "Qty", "Price", "Subtotal"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -259,7 +264,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
           {order.payment && (
             <div className="tn-card" style={{ padding: 22 }}>
               <div className="tn-eyebrow" style={{ marginBottom: 12 }}>
-                PEMBAYARAN
+                PAYMENT
               </div>
               <div
                 style={{
@@ -272,8 +277,8 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
                 <Pair k="Provider" v={order.payment.provider} />
                 <Pair k="Status" v={order.payment.status} />
                 <Pair k="Transaction ID" v={order.payment.transaction_id ?? "—"} />
-                <Pair k="Dibayar pada" v={order.payment.paid_at ?? "—"} />
-                <Pair k="Nilai" v={formatCurrency(order.payment.amount)} />
+                <Pair k="Paid at" v={order.payment.paid_at ?? "—"} />
+                <Pair k="Amount" v={formatCurrency(order.payment.amount)} />
               </div>
             </div>
           )}
@@ -283,11 +288,11 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
         <aside style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div className="tn-card" style={{ padding: 22 }}>
             <h3 className="tn-display-5" style={{ marginBottom: 14 }}>
-              <em style={{ fontStyle: "italic" }}>Ringkasan</em>
+              <em style={{ fontStyle: "italic" }}>Summary</em>
             </h3>
             <SumRow k="Subtotal" v={formatCurrency(order.subtotal)} muted />
             <SumRow
-              k={`Ongkir · ${(order.shipping_courier ?? "").toUpperCase()} ${order.shipping_service ?? ""}`.trim()}
+              k={`Shipping · ${(order.shipping_courier ?? "").toUpperCase()} ${order.shipping_service ?? ""}`.trim()}
               v={formatCurrency(order.shipping_cost)}
               muted
             />
@@ -297,7 +302,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
 
           <div className="tn-card" style={{ padding: 22 }}>
             <div className="tn-eyebrow" style={{ marginBottom: 12 }}>
-              PEMBELI
+              BUYER
             </div>
             <div style={{ display: "grid", gap: 6, fontSize: 14, lineHeight: 1.55 }}>
               <div style={{ fontWeight: 500 }}>{order.customer_name}</div>
@@ -309,7 +314,7 @@ function OrderDetailView({ session, id }: { session: AdminSession; id: string })
           {order.shipping_address && (
             <div className="tn-card" style={{ padding: 22 }}>
               <div className="tn-eyebrow" style={{ marginBottom: 12 }}>
-                DIKIRIM KE
+                SHIP TO
               </div>
               <div className="tn-body-sm" style={{ lineHeight: 1.65 }}>
                 {order.shipping_address.line1}
@@ -357,5 +362,9 @@ export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   if (!id) return null;
-  return <AdminGuard>{(session) => <OrderDetailView session={session} id={id} />}</AdminGuard>;
+  return (
+    <AdminGuard>
+      {(session, { isDemo }) => <OrderDetailView session={session} id={id} isDemo={isDemo} />}
+    </AdminGuard>
+  );
 }

@@ -13,26 +13,25 @@ export default function NotFound() {
     >
       <div style={{ maxWidth: 600 }}>
         <div className="tn-eyebrow" style={{ marginBottom: 16 }}>
-          № 404 · TIDAK DITEMUKAN
+          № 404 · NOT FOUND
         </div>
         <h1 className="tn-display-1" style={{ marginBottom: 24, fontSize: "clamp(72px, 12vw, 168px)" }}>
-          Empat<br />
-          <em style={{ fontStyle: "italic", color: "var(--terracotta)" }}>nol</em>
-          <br />empat.
+          Four<br />
+          <em style={{ fontStyle: "italic", color: "var(--terracotta)" }}>oh</em>
+          <br />four.
         </h1>
         <p
           className="tn-body"
           style={{ maxWidth: 440, marginInline: "auto", marginBottom: 28 }}
         >
-          Halaman yang kamu cari sepertinya sudah pindah atau memang tidak pernah ada.
-          Coba mulai dari katalog.
+          The page you're looking for has moved or never existed. Try starting from the catalog.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link className="tn-btn" href="/">
-            Kembali ke katalog <ArrowRight size={14} />
+            Back to the catalog <ArrowRight size={14} />
           </Link>
           <Link className="tn-btn tn-btn-ghost" href="/jurnal">
-            Baca jurnal
+            Read the journal
           </Link>
         </div>
       </div>

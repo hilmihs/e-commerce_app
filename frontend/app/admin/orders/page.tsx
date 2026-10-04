@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, BarChart3 } from "lucide-react";
-import { AdminGuard } from "@/components/AdminGuard";
+import { AdminGuard, DemoModeBanner } from "@/components/AdminGuard";
 import { AdminShell } from "@/components/AdminShell";
 import { adminApi, formatCurrency } from "@/lib/api";
 import type { AdminSession, OrderSummary } from "@/types/api";
@@ -19,13 +19,13 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending_payment: "Menunggu bayar",
-  paid: "Dibayar",
-  processing: "Dikemas",
-  shipped: "Dikirim",
-  completed: "Selesai",
-  cancelled: "Batal",
-  refunded: "Refund"
+  pending_payment: "Pending payment",
+  paid: "Paid",
+  processing: "Packing",
+  shipped: "Shipped",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded"
 };
 
 const STATUS_OPTIONS = [
@@ -39,7 +39,7 @@ const STATUS_OPTIONS = [
 
 function todayLabel() {
   const d = new Date();
-  return d.toLocaleDateString("id-ID", {
+  return d.toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -47,20 +47,22 @@ function todayLabel() {
   });
 }
 
-function OrdersTable({ session }: { session: AdminSession }) {
+function OrdersTable({ session, isDemo }: { session: AdminSession; isDemo: boolean }) {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isDemo) return;
     adminApi
       .orders(session.token)
       .then(setOrders)
       .catch((caught) => {
-        setError(caught instanceof Error ? caught.message : "Order admin gagal dimuat.");
+        setError(caught instanceof Error ? caught.message : "Couldn't load admin orders.");
       });
-  }, [session.token]);
+  }, [session.token, isDemo]);
 
   async function updateStatus(order: OrderSummary, status: string) {
+    if (isDemo) return;
     const updated = await adminApi.updateOrderStatus(session.token, order.id, status);
     setOrders((current) => current.map((item) => (item.id === updated.id ? updated : item)));
   }
@@ -78,15 +80,16 @@ function OrdersTable({ session }: { session: AdminSession }) {
       subtitle={todayLabel()}
       title={
         <>
-          Selamat pagi, <em style={{ fontStyle: "italic" }}>{session.user.name.split(" ")[0]}</em>.
+          Good morning, <em style={{ fontStyle: "italic" }}>{session.user.name.split(" ")[0]}</em>.
         </>
       }
       action={
         <span className="tn-label-mono" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <BarChart3 size={14} /> {kpis.count} PESANAN
+          <BarChart3 size={14} /> {kpis.count} ORDERS
         </span>
       }
     >
+      {isDemo && <DemoModeBanner />}
       {error && (
         <div
           style={{
@@ -113,10 +116,10 @@ function OrdersTable({ session }: { session: AdminSession }) {
         className="kpi-grid"
       >
         {[
-          { l: "Total nilai", v: formatCurrency(kpis.total), d: `${kpis.count} pesanan` },
-          { l: "Pesanan baru", v: String(kpis.pending), d: "menunggu pembayaran", tone: "var(--terracotta)" },
-          { l: "Dibayar", v: String(kpis.paid), d: "siap proses", tone: "var(--success)" },
-          { l: "Rata-rata", v: formatCurrency(kpis.avg), d: "per pesanan" }
+          { l: "Total value", v: formatCurrency(kpis.total), d: `${kpis.count} orders` },
+          { l: "New orders", v: String(kpis.pending), d: "awaiting payment", tone: "var(--terracotta)" },
+          { l: "Paid", v: String(kpis.paid), d: "ready to process", tone: "var(--success)" },
+          { l: "Average", v: formatCurrency(kpis.avg), d: "per order" }
         ].map((k) => (
           <div key={k.l} className="tn-card" style={{ padding: 22 }}>
             <div className="tn-label-mono" style={{ fontSize: 11, marginBottom: 10 }}>
@@ -150,9 +153,9 @@ function OrdersTable({ session }: { session: AdminSession }) {
           }}
         >
           <h3 className="tn-display-5">
-            Pesanan <em style={{ fontStyle: "italic" }}>terbaru</em>
+            Latest <em style={{ fontStyle: "italic" }}>orders</em>
           </h3>
-          <span className="tn-label-mono">DIPERBARUI OLEH WEBHOOK MIDTRANS</span>
+          <span className="tn-label-mono">SYNCED VIA MIDTRANS WEBHOOK</span>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table
@@ -168,7 +171,7 @@ function OrdersTable({ session }: { session: AdminSession }) {
                   textTransform: "uppercase"
                 }}
               >
-                {["Nomor", "Status", "Bayar", "Total", "Ubah status", ""].map((h, i) => (
+                {["Number", "Status", "Payment", "Total", "Change status", ""].map((h, i) => (
                   <th
                     key={i}
                     style={{
@@ -247,7 +250,7 @@ function OrdersTable({ session }: { session: AdminSession }) {
                       className="tn-btn-link"
                       style={{ fontSize: 12 }}
                     >
-                      Buka <ChevronRight size={12} style={{ display: "inline" }} />
+                      Open <ChevronRight size={12} style={{ display: "inline" }} />
                     </Link>
                   </td>
                 </tr>
@@ -255,7 +258,7 @@ function OrdersTable({ session }: { session: AdminSession }) {
               {orders.length === 0 && !error && (
                 <tr>
                   <td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
-                    Belum ada pesanan.
+                    No orders yet.
                   </td>
                 </tr>
               )}
@@ -277,5 +280,9 @@ function OrdersTable({ session }: { session: AdminSession }) {
 }
 
 export default function AdminOrdersPage() {
-  return <AdminGuard>{(session) => <OrdersTable session={session} />}</AdminGuard>;
+  return (
+    <AdminGuard>
+      {(session, { isDemo }) => <OrdersTable session={session} isDemo={isDemo} />}
+    </AdminGuard>
+  );
 }

@@ -2,6 +2,16 @@
 
 import type { AdminSession } from "@/types/api";
 
+/**
+ * Backend-token-keyed admin session storage.
+ *
+ * @deprecated Prefer the unified session in `lib/session.tsx` (`useSession()`).
+ * This module is kept ONLY because the AdminGuard still uses `getAdminSession`
+ * to detect "real backend session present" (token available) vs. "demo
+ * frontend-only session" (no backend token). When the Laravel auth flow is
+ * fully wired through `trustSession`, this file can be removed.
+ */
+
 const ADMIN_SESSION_KEY = "storefront.admin.v1";
 
 export function saveAdminSession(session: AdminSession) {

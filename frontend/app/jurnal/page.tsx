@@ -2,7 +2,18 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PlaceImg, SectionHead } from "@/components/design";
 import type { Tint } from "@/components/design";
+import { Reveal } from "@/components/Reveal";
 import { NewsletterForm } from "@/components/NewsletterForm";
+import { IMG } from "@/lib/images";
+
+const JURNAL_IMG: Record<string, string> = {
+  "studio-waingapu": IMG.jurnalIkat,
+  "kopi-gayo": IMG.jurnalCoffee,
+  "rotan-yang-belajar": IMG.jurnalRattan,
+  "ekonomi-kriya": IMG.jurnalDye,
+  "kemasan-ulang": IMG.jurnalKitchen,
+  "tongkonan-weave": IMG.jurnalCeramic
+};
 
 type Article = {
   slug: string;
@@ -22,85 +33,85 @@ const ARTICLES: Article[] = [
     slug: "studio-waingapu",
     num: "№ 01",
     category: "PORTRAIT",
-    title: "Empat puluh hari di",
+    title: "Forty days at",
     italic: "Studio Waingapu",
     excerpt:
-      "Bagaimana Ratna Hidayah dan tujuh ibu di Sumba Timur mempertahankan tenun ikat dengan pewarna mengkudu, sembari menolak permintaan ekspor massal yang akan membunuh kerajinannya sendiri.",
-    author: "Tim Toko Nusa",
-    read: "8 menit",
-    date: "12 Mei 2026",
+      "How Ratna Hidayah and seven women in East Sumba keep ikat weaving alive with mengkudu dye, even as they turn down bulk export orders that would kill the craft.",
+    author: "Toko Nusa team",
+    read: "8 min",
+    date: "May 12, 2026",
     tint: 3
   },
   {
     slug: "kopi-gayo",
     num: "№ 02",
-    category: "PANGAN",
-    title: "Gayo, kopi yang",
-    italic: "berjalan lambat",
+    category: "PANTRY",
+    title: "Gayo, the coffee that",
+    italic: "walks slowly",
     excerpt:
-      "Tentang kebun kopi keluarga di Aceh Tengah, proses natural yang butuh sabar, dan kenapa biji yang ‘bersih’ kadang justru kehilangan nyawa.",
-    author: "Roastery Tanoh",
-    read: "5 menit",
-    date: "08 Mei 2026",
+      "On family coffee farms in highland Aceh, the natural process that demands patience, and why “clean” beans sometimes lose their soul.",
+    author: "Tanoh Roastery",
+    read: "5 min",
+    date: "May 8, 2026",
     tint: "dark"
   },
   {
     slug: "rotan-yang-belajar",
     num: "№ 03",
     category: "MATERIAL",
-    title: "Rotan yang",
-    italic: "belajar bengkok",
+    title: "Rattan that",
+    italic: "learns to bend",
     excerpt:
-      "Catatan dari Kayuh Studio: mengapa membuat lampu dari rotan adalah proses negosiasi panjang antara tangan, uap, dan kesabaran.",
+      "A note from Kayuh Studio: building a rattan lamp is a long negotiation between hand, steam, and patience.",
     author: "Kayuh Studio",
-    read: "6 menit",
-    date: "02 Mei 2026",
+    read: "6 min",
+    date: "May 2, 2026",
     tint: 5
   },
   {
     slug: "ekonomi-kriya",
     num: "№ 04",
-    category: "ESAI",
-    title: "Adil itu",
-    italic: "berapa rupiah?",
+    category: "ESSAY",
+    title: "What is",
+    italic: "fair, in rupiah?",
     excerpt:
-      "Diskusi terbuka soal margin pembuat, harga eceran, dan kenapa Toko Nusa tidak pernah menawarkan diskon besar pada barang kerajinan.",
-    author: "Tim Toko Nusa",
-    read: "10 menit",
-    date: "28 April 2026",
+      "An open discussion about maker margins, retail prices, and why Toko Nusa never runs deep discounts on craft.",
+    author: "Toko Nusa team",
+    read: "10 min",
+    date: "April 28, 2026",
     tint: 1
   },
   {
     slug: "kemasan-ulang",
     num: "№ 05",
-    category: "OPERASI",
-    title: "Kemasan yang",
-    italic: "tahu malu",
+    category: "OPERATIONS",
+    title: "Packaging that",
+    italic: "knows shame",
     excerpt:
-      "Kenapa kami pakai karton daur ulang dan kertas serat, dan ekonomi dibalik keputusan kecil itu.",
-    author: "Tim Toko Nusa",
-    read: "4 menit",
-    date: "21 April 2026",
+      "Why we use recycled kraft cartons and paper-fibre fill — and the math behind that small decision.",
+    author: "Toko Nusa team",
+    read: "4 min",
+    date: "April 21, 2026",
     tint: 4
   },
   {
     slug: "tongkonan-weave",
     num: "№ 06",
     category: "PORTRAIT",
-    title: "Tongkonan, dan",
-    italic: "tenun yang tinggal",
+    title: "Tongkonan, and the",
+    italic: "weave that remains",
     excerpt:
-      "Perjalanan ke Toraja menemui Ibu Bertha — penenun selendang yang belajar dari neneknya dan menolak benang pabrik.",
-    author: "Tim Toko Nusa",
-    read: "7 menit",
-    date: "14 April 2026",
+      "A trip to Toraja to meet Ibu Bertha — a weaver who learned from her grandmother and refuses factory yarn.",
+    author: "Toko Nusa team",
+    read: "7 min",
+    date: "April 14, 2026",
     tint: 2
   }
 ];
 
 export const metadata = {
-  title: "Jurnal · Toko Nusa",
-  description: "Cerita dari studio, kebun, dan dapur para pembuat Toko Nusa."
+  title: "Journal · Toko Nusa",
+  description: "Stories from the studios, farms, and kitchens of the makers behind Toko Nusa."
 };
 
 export default function JurnalPage() {
@@ -108,12 +119,11 @@ export default function JurnalPage() {
 
   return (
     <>
-      {/* Hero article */}
       <section style={{ padding: "64px 40px 56px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
-          <span className="tn-num">№ 01 — JURNAL</span>
+          <span className="tn-num">№ 01 — JOURNAL</span>
           <span style={{ flex: 1, height: 1, background: "var(--ink)", maxWidth: 120 }} />
-          <span className="tn-num">EDISI MEI · MMXXVI</span>
+          <span className="tn-num">MAY ISSUE · MMXXVI</span>
         </div>
         <Link
           href={`/jurnal/${hero.slug}`}
@@ -125,7 +135,14 @@ export default function JurnalPage() {
           }}
           className="hero-grid"
         >
-          <PlaceImg label={hero.title} tint={hero.tint} ratio="4/5" />
+          <PlaceImg
+            label={hero.title}
+            tint={hero.tint}
+            ratio="4/5"
+            src={JURNAL_IMG[hero.slug]}
+            alt={hero.title}
+            kenburns
+          />
           <div>
             <div className="tn-eyebrow" style={{ marginBottom: 14 }}>
               {hero.num} · {hero.category}
@@ -156,84 +173,85 @@ export default function JurnalPage() {
               <span>·</span>
               <span>{hero.date}</span>
               <span>·</span>
-              <span>{hero.read} baca</span>
+              <span>{hero.read} read</span>
             </div>
             <div style={{ marginTop: 24 }}>
               <span className="tn-btn-link" style={{ fontSize: 14 }}>
-                Baca selengkapnya <ArrowRight size={14} style={{ display: "inline" }} />
+                Read more <ArrowRight size={14} style={{ display: "inline" }} />
               </span>
             </div>
           </div>
         </Link>
       </section>
 
-      {/* Article grid */}
       <section style={{ padding: "56px 40px 96px", background: "var(--page)", borderTop: "1px solid var(--line)" }}>
         <SectionHead
           num="№ 02"
-          eyebrow="LEBIH DARI JURNAL"
-          title="Catatan & cerita,"
-          italic="terbaru."
+          eyebrow="MORE FROM THE JOURNAL"
+          title="Notes & stories,"
+          italic="recent."
         />
         <div
           style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32 }}
           className="grid-3"
         >
           {rest.map((a, i) => (
-            <Link
-              key={a.slug}
-              href={`/jurnal/${a.slug}`}
-              style={{ display: "flex", flexDirection: "column", gap: 14 }}
-              className="article-card"
-            >
-              <div className="tn-img-zoom" style={{ aspectRatio: "4/5" }}>
-                <PlaceImg
-                  label={a.title}
-                  tint={a.tint}
-                  ratio="4/5"
-                  style={{ height: "100%" }}
-                />
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "var(--muted)",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase"
-                }}
+            <Reveal key={a.slug} variant="up" delay={i * 90}>
+              <Link
+                href={`/jurnal/${a.slug}`}
+                style={{ display: "flex", flexDirection: "column", gap: 14 }}
+                className="article-card"
               >
-                <span>{a.num}</span>
-                <span>·</span>
-                <span>{a.category}</span>
-                <span>·</span>
-                <span>{a.read}</span>
-              </div>
-              <h3
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 28,
-                  lineHeight: 1.05,
-                  letterSpacing: "-0.01em"
-                }}
-              >
-                {a.title}{" "}
-                {a.italic && <em style={{ fontStyle: "italic" }}>{a.italic}</em>}
-              </h3>
-              <p className="tn-body-sm" style={{ lineHeight: 1.6 }}>
-                {a.excerpt}
-              </p>
-              <div className="tn-label-mono" style={{ fontSize: 11 }}>
-                {a.author.toUpperCase()} · {a.date}
-              </div>
-            </Link>
+                <div className="tn-img-zoom" style={{ aspectRatio: "4/5" }}>
+                  <PlaceImg
+                    label={a.title}
+                    tint={a.tint}
+                    ratio="4/5"
+                    src={JURNAL_IMG[a.slug]}
+                    alt={a.title}
+                    style={{ height: "100%" }}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11,
+                    color: "var(--muted)",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  <span>{a.num}</span>
+                  <span>·</span>
+                  <span>{a.category}</span>
+                  <span>·</span>
+                  <span>{a.read}</span>
+                </div>
+                <h3
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 28,
+                    lineHeight: 1.05,
+                    letterSpacing: "-0.01em"
+                  }}
+                >
+                  {a.title}{" "}
+                  {a.italic && <em style={{ fontStyle: "italic" }}>{a.italic}</em>}
+                </h3>
+                <p className="tn-body-sm" style={{ lineHeight: 1.6 }}>
+                  {a.excerpt}
+                </p>
+                <div className="tn-label-mono" style={{ fontSize: 11 }}>
+                  {a.author.toUpperCase()} · {a.date}
+                </div>
+              </Link>
+            </Reveal>
           ))}
         </div>
       </section>
 
-      {/* Newsletter */}
       <section style={{ padding: "96px 40px" }}>
         <div
           className="tn-card"
@@ -247,18 +265,17 @@ export default function JurnalPage() {
             gap: 56,
             alignItems: "center"
           }}
-          // eslint-disable-next-line react/no-unknown-property
         >
           <div>
             <div
               className="tn-eyebrow"
               style={{ color: "rgba(245,239,228,0.55)", marginBottom: 14 }}
             >
-              EDISI BULANAN · MIN. 2× SEBULAN
+              MONTHLY · TWICE A MONTH
             </div>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 56, lineHeight: 1.02 }}>
-              Cerita pendek,{" "}
-              <em style={{ fontStyle: "italic", color: "var(--terracotta)" }}>kotak masuk</em>
+              Short stories,{" "}
+              <em style={{ fontStyle: "italic", color: "var(--terracotta)" }}>in your inbox</em>
               .
             </h2>
           </div>

@@ -1,12 +1,36 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Star, Truck, ShieldCheck, Check } from "lucide-react";
+import { Star, Truck, ShieldCheck, Check, MapPin } from "lucide-react";
+import type { Metadata } from "next";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { ProductCard } from "@/components/ProductCard";
 import { formatCurrency, getProduct, getProducts } from "@/lib/api";
 import { PlaceImg, SectionHead, pickTint } from "@/components/design";
+import { getSeller, getRating, getSold } from "@/lib/marketplace";
 import type { Product } from "@/types/api";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const product = await getProduct(slug);
+    return {
+      title: `${product.name} · Toko Nusa`,
+      description: product.description?.slice(0, 160),
+      openGraph: {
+        title: product.name,
+        description: product.description?.slice(0, 160),
+        images: product.images[0]?.url ? [product.images[0].url] : []
+      }
+    };
+  } catch {
+    return { title: "Product · Toko Nusa" };
+  }
+}
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -30,10 +54,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const images = product.images.length ? product.images : [];
   const main = images[0];
   const thumbs = images.length > 0 ? images : [null, null, null, null];
+  const seller = getSeller(product);
+  const rating = getRating(product);
+  const sold = getSold(product);
 
   return (
     <>
-      {/* breadcrumb */}
       <div
         style={{
           padding: "20px 40px",
@@ -45,7 +71,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         }}
       >
         <Link href="/">Toko Nusa</Link> <span style={{ margin: "0 8px" }}>/</span>
-        <Link href="/">Katalog</Link> <span style={{ margin: "0 8px" }}>/</span>
+        <Link href="/">Shop</Link> <span style={{ margin: "0 8px" }}>/</span>
         <span style={{ color: "var(--ink)" }}>{product.name}</span>
       </div>
 
@@ -54,7 +80,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 56 }}
           className="pdp-grid"
         >
-          {/* Gallery */}
           <div
             style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 16 }}
             className="pdp-gallery"
@@ -94,28 +119,63 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
           </div>
-          {/* Info */}
+
           <div style={{ position: "sticky", top: 24, alignSelf: "start" }}>
-            <div className="tn-label-mono" style={{ fontSize: 11, marginBottom: 10 }}>
-              TOKO NUSA · KURASI
-            </div>
+            <Link
+              href={`/sellers/${seller.slug}`}
+              className="tn-label-mono"
+              style={{
+                fontSize: 11,
+                marginBottom: 10,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              {seller.name.toUpperCase()} · {seller.city.toUpperCase()}
+              {seller.verified && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 14,
+                    height: 14,
+                    borderRadius: 999,
+                    background: "var(--terracotta)",
+                    color: "var(--paper)",
+                    fontSize: 9,
+                    fontWeight: 700
+                  }}
+                >
+                  ✓
+                </span>
+              )}
+            </Link>
             <h1 className="tn-display-3" style={{ marginBottom: 6 }}>
               {product.name}
             </h1>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
               <div style={{ display: "inline-flex", gap: 2, color: "var(--terracotta)" }}>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} size={14} fill={i < 4 ? "currentColor" : "none"} strokeWidth={1.2} />
+                  <Star
+                    key={i}
+                    size={14}
+                    fill={i < Math.round(rating.score) ? "currentColor" : "none"}
+                    strokeWidth={1.2}
+                  />
                 ))}
               </div>
-              <span className="tn-body-sm">4.9 · 28 ulasan</span>
+              <span className="tn-body-sm">
+                {rating.score.toFixed(1)} · {rating.count} reviews · {sold} sold
+              </span>
               <span style={{ width: 4, height: 4, borderRadius: 999, background: "var(--muted)" }} />
               {product.stock > 0 ? (
                 <span className="tn-body-sm" style={{ color: "var(--success)" }}>
-                  ● {product.stock} tersisa · siap kirim
+                  ● {product.stock} left · ships ready
                 </span>
               ) : (
-                <span className="tn-body-sm" style={{ color: "var(--danger)" }}>● Stok habis</span>
+                <span className="tn-body-sm" style={{ color: "var(--danger)" }}>● Sold out</span>
               )}
             </div>
 
@@ -133,7 +193,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <span className="tn-price" style={{ fontSize: 36, fontWeight: 500 }}>
                 {formatCurrency(product.price)}
               </span>
-              <span className="tn-body-sm">termasuk PPN · belum termasuk ongkir</span>
+              <span className="tn-body-sm">VAT included · shipping calculated at checkout</span>
             </div>
 
             <p
@@ -159,8 +219,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               }}
             >
               {[
-                ["Berat", `${product.weight_grams} gram`],
-                ["Status", product.is_active ? "Aktif" : "Tidak aktif"],
+                ["Weight", `${product.weight_grams} g`],
+                ["Maker", seller.name],
+                ["Origin", seller.city],
+                ["Status", product.is_active ? "Active" : "Inactive"],
                 ["SKU", `TN-${String(product.id).padStart(4, "0")}`]
               ].map(([k, v]) => (
                 <div key={k} style={{ display: "contents" }}>
@@ -176,7 +238,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <AddToCartButton product={product} />
             </div>
 
-            {/* Trust strip */}
             <div
               style={{
                 marginTop: 28,
@@ -192,16 +253,24 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <div style={{ flex: 1, minWidth: 180, display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <Truck size={18} strokeWidth={1.4} style={{ marginTop: 2, color: "var(--ink)" }} />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>Kirim 24–48 jam</div>
-                  <div className="tn-body-sm">dari Jakarta · ongkir dihitung RajaOngkir</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>Ships in 24–48h</div>
+                  <div className="tn-body-sm">From Jakarta · rates from RajaOngkir</div>
                 </div>
               </div>
               <div style={{ width: 1, background: "var(--line)" }} />
               <div style={{ flex: 1, minWidth: 180, display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <ShieldCheck size={18} strokeWidth={1.4} style={{ marginTop: 2, color: "var(--ink)" }} />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>Tukar 14 hari</div>
-                  <div className="tn-body-sm">tanpa biaya tambahan</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>14-day exchange</div>
+                  <div className="tn-body-sm">No extra fees</div>
+                </div>
+              </div>
+              <div style={{ width: 1, background: "var(--line)" }} />
+              <div style={{ flex: 1, minWidth: 180, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <MapPin size={18} strokeWidth={1.4} style={{ marginTop: 2, color: "var(--ink)" }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>Direct from {seller.city}</div>
+                  <div className="tn-body-sm">Made by {seller.name}</div>
                 </div>
               </div>
             </div>
@@ -211,7 +280,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         {/* Tabs */}
         <div style={{ marginTop: 88, borderTop: "1px solid var(--ink)", paddingTop: 24 }}>
           <div style={{ display: "flex", gap: 36, marginBottom: 28, flexWrap: "wrap" }}>
-            {["Deskripsi", "Cara merawat", "Ulasan (28)", "Tentang pembuat"].map((t, i) => (
+            {["Description", "Care", `Reviews (${rating.count})`, "About the maker"].map((t, i) => (
               <button
                 key={t}
                 style={{
@@ -237,21 +306,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <div style={{ fontSize: 15, lineHeight: 1.7, color: "var(--ink-soft)" }}>
               <p>{product.description}</p>
               <p style={{ marginTop: 14 }}>
-                Setiap helai unik. Variasi kecil pada ujung benang dan kerapatan adalah ciri tenun tangan, bukan cacat.
+                Each piece is unique. Small variations in fibre and weave are signs of handwork, not flaws.
               </p>
             </div>
             <aside className="tn-card" style={{ padding: 24 }}>
-              <div className="tn-eyebrow" style={{ marginBottom: 12 }}>RINGKASAN</div>
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "grid",
-                  gap: 12
-                }}
-              >
-                {["Kurasi langsung dari pembuat", "Dikemas <2 jam", "Garansi pengrajin 14 hari", "Bisa request gift wrap"].map((b) => (
+              <div className="tn-eyebrow" style={{ marginBottom: 12 }}>SUMMARY</div>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
+                {[
+                  "Curated direct from the maker",
+                  "Packed within 2 hours",
+                  "14-day craftsmanship guarantee",
+                  "Gift wrap available on request"
+                ].map((b) => (
                   <li key={b} style={{ display: "flex", gap: 10, fontSize: 14 }}>
                     <Check size={16} strokeWidth={1.5} color="var(--terracotta)" style={{ flexShrink: 0, marginTop: 2 }} />
                     <span>{b}</span>
@@ -262,10 +328,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <div style={{ marginTop: 112 }}>
-            <SectionHead num="№ 05" eyebrow="MASIH DARI KATALOG" title="Mungkin juga" italic="cocok." />
+            <SectionHead num="№ 05" eyebrow="MORE FROM THE CATALOG" title="You might also" italic="like." />
             <div
               style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}
               className="product-grid"

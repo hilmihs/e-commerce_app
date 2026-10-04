@@ -1,8 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import type { Metadata } from "next";
 import { PlaceImg } from "@/components/design";
 import type { Tint } from "@/components/design";
+import { IMG } from "@/lib/images";
+
+const JURNAL_IMG: Record<string, string> = {
+  "studio-waingapu": IMG.jurnalIkat,
+  "kopi-gayo": IMG.jurnalCoffee,
+  "rotan-yang-belajar": IMG.jurnalRattan,
+  "ekonomi-kriya": IMG.jurnalDye,
+  "kemasan-ulang": IMG.jurnalKitchen,
+  "tongkonan-weave": IMG.jurnalCeramic
+};
 
 type Article = {
   slug: string;
@@ -23,114 +34,128 @@ const ARTICLES: Record<string, Article> = {
     slug: "studio-waingapu",
     num: "№ 01",
     category: "PORTRAIT",
-    title: "Empat puluh hari di",
+    title: "Forty days at",
     italic: "Studio Waingapu",
     excerpt:
-      "Bagaimana Ratna Hidayah dan tujuh ibu di Sumba Timur mempertahankan tenun ikat dengan pewarna mengkudu, sembari menolak permintaan ekspor massal yang akan membunuh kerajinannya sendiri.",
+      "How Ratna Hidayah and seven women in East Sumba keep ikat weaving alive with mengkudu dye, even as they turn down bulk export orders that would kill the craft.",
     body: [
-      "Rumah Ratna terletak setengah kilometer dari jalan utama Waingapu. Atapnya seng, dindingnya papan, dan di teras ada tujuh ATBM tua yang berderit pelan setiap kali ditiup angin laut.",
-      "Setiap helai tenun ikat — yang anda lihat di etalase Toko Nusa — adalah hasil empat puluh hari pekerjaan. Pertama, ratusan benang katun pintal tangan diikat dengan teknik “patola” untuk menahan bagian yang tidak akan dicelup. Lalu pewarnaan: mengkudu, indigo, dan kunyit. Tiga lapis. Tiap lapis butuh tiga hari kering.",
-      "Yang sering tidak diceritakan adalah bagian mental: butuh kesabaran luar biasa untuk tidak menerima permintaan dari pembeli grosir yang mau bayar dua puluh persen lebih murah asal kuantitas dua ratus pcs sebulan. Ratna selalu menolak. “Kalau saya iyakan,” katanya, “tahun depan tidak ada lagi yang bisa menenun.”",
-      "Toko Nusa membeli langsung dari Studio Waingapu dengan harga yang disepakati di awal musim. Tidak ada potongan, tidak ada konsinyasi. Yang sampai ke kamu adalah harga akhir — sebagian besar tetap di Sumba."
+      "Ratna's house is half a kilometre off the main road in Waingapu. The roof is zinc, the walls are board, and on the verandah sit seven old looms that creak each time the sea breeze blows through.",
+      "Every piece of ikat — the ones you see in the Toko Nusa storefront — is the result of forty days of work. First, hundreds of strands of hand-spun cotton are tied off with the patola technique, masking the sections that won't take the dye. Then the dyeing: mengkudu root, indigo, turmeric. Three layers. Each layer needs three days to dry.",
+      "What rarely gets told is the mental part: it takes extraordinary patience to keep declining wholesale buyers who'll pay twenty percent less if you commit to two hundred pieces a month. Ratna always refuses. “If I say yes,” she says, “next year there'll be no one left who can weave.”",
+      "Toko Nusa buys directly from Studio Waingapu at a price agreed at the start of each season. No clawbacks, no consignment. What you pay is the final price — most of it stays in Sumba."
     ],
-    author: "Tim Toko Nusa",
-    read: "8 menit",
-    date: "12 Mei 2026",
+    author: "Toko Nusa team",
+    read: "8 min",
+    date: "May 12, 2026",
     tint: 3
   },
   "kopi-gayo": {
     slug: "kopi-gayo",
     num: "№ 02",
-    category: "PANGAN",
-    title: "Gayo, kopi yang",
-    italic: "berjalan lambat",
+    category: "PANTRY",
+    title: "Gayo, the coffee that",
+    italic: "walks slowly",
     excerpt:
-      "Tentang kebun kopi keluarga di Aceh Tengah, proses natural yang butuh sabar, dan kenapa biji yang ‘bersih’ kadang justru kehilangan nyawa.",
+      "On family coffee farms in highland Aceh, the natural process that demands patience, and why “clean” beans sometimes lose their soul.",
     body: [
-      "Di Bener Meriah, kopi tidak dipanen — ia dipetik. Buah satu per satu. Cherry yang merah tua, sisanya ditinggal sampai matang.",
-      "Roastery Tanoh memilih proses natural: cherry dikeringkan utuh di atas raised bed selama 18–22 hari. Hasilnya kompleks: ada nada anggur, sedikit tropis, aftertaste yang berputar di langit-langit.",
-      "Proses ini repot. Lebih lambat dari washed. Risiko jamur tinggi kalau cuaca tidak konsisten. Tapi karakter biji jadi lebih hidup — dan itu yang ingin dipertahankan."
+      "In Bener Meriah, coffee isn't harvested — it's picked. Cherry by cherry. The deepest reds are taken, the rest left to ripen.",
+      "Tanoh Roastery picks the natural process: cherries are dried whole on raised beds for 18 to 22 days. The result is complex — notes of wine, a hint of tropical fruit, an aftertaste that lingers on the palate.",
+      "The process is troublesome. Slower than washed. Mould risk is high if the weather wavers. But the bean's character stays alive — and that's what they're protecting."
     ],
-    author: "Roastery Tanoh",
-    read: "5 menit",
-    date: "08 Mei 2026",
+    author: "Tanoh Roastery",
+    read: "5 min",
+    date: "May 8, 2026",
     tint: "dark"
   },
   "rotan-yang-belajar": {
     slug: "rotan-yang-belajar",
     num: "№ 03",
     category: "MATERIAL",
-    title: "Rotan yang",
-    italic: "belajar bengkok",
+    title: "Rattan that",
+    italic: "learns to bend",
     excerpt:
-      "Catatan dari Kayuh Studio: mengapa membuat lampu dari rotan adalah proses negosiasi panjang antara tangan, uap, dan kesabaran.",
+      "A note from Kayuh Studio: building a rattan lamp is a long negotiation between hand, steam, and patience.",
     body: [
-      "Rotan adalah salah satu material paling kuat di dunia per gram. Tapi ia keras kepala. Untuk membentuk, kamu harus mengukus, bukan memaksa.",
-      "Setiap lampu di seri ‘Tertulis’ butuh 36 strip rotan. Strip-strip itu disusun di cetakan baja, satu per satu, diiringi uap dari panci yang mendidih di sebelahnya. Tangan harus cepat — dingin sedikit, rotan kembali kaku.",
-      "Hasil akhirnya: garis-garis cahaya melengkung yang seperti tulisan tangan. Tidak pernah benar-benar sama dua-duanya."
+      "Rattan is one of the strongest materials in the world per gram. But it is stubborn. To shape it, you steam — you don't force.",
+      "Each lamp in the “Tertulis” series uses 36 rattan strips. They are laid in a steel mould one by one, with steam rising from a pot beside the workbench. The hands have to be quick — once the strip cools, the rattan stiffens up.",
+      "The final piece is curving lines of light that look like handwriting. No two are ever quite the same."
     ],
     author: "Kayuh Studio",
-    read: "6 menit",
-    date: "02 Mei 2026",
+    read: "6 min",
+    date: "May 2, 2026",
     tint: 5
   },
   "ekonomi-kriya": {
     slug: "ekonomi-kriya",
     num: "№ 04",
-    category: "ESAI",
-    title: "Adil itu",
-    italic: "berapa rupiah?",
+    category: "ESSAY",
+    title: "What is",
+    italic: "fair, in rupiah?",
     excerpt:
-      "Diskusi terbuka soal margin pembuat, harga eceran, dan kenapa Toko Nusa tidak pernah menawarkan diskon besar pada barang kerajinan.",
+      "An open discussion about maker margins, retail prices, and why Toko Nusa never runs deep discounts on craft.",
     body: [
-      "Kalau kamu pernah lihat tenun ikat dijual Rp 350.000 di pasar oleh-oleh, tahukah berapa yang sampai ke penenunnya? Rata-rata Rp 90.000. Sisanya margin perantara, biaya logistik, dan pajak.",
-      "Toko Nusa beroperasi dengan model langsung: tidak ada perantara di tengah. Margin kami tipis (rata-rata 32%), tapi cukup untuk operasi, kemasan, dan tim kecil di Jakarta.",
-      "Karena itu kami jarang diskon. Bukan karena pelit — tapi karena harga itu sudah mencerminkan apa yang adil untuk pembuatnya."
+      "If you've ever seen ikat sold for Rp 350,000 at a souvenir market, do you know how much reaches the weaver? On average Rp 90,000. The rest is middleman margin, logistics, taxes.",
+      "Toko Nusa runs a direct model: no broker in the middle. Our margin is thin — about 32% on average — but enough to cover operations, packaging, and a small team in Jakarta.",
+      "That's why we rarely discount. Not out of stinginess — because the price already reflects what's fair for the maker."
     ],
-    author: "Tim Toko Nusa",
-    read: "10 menit",
-    date: "28 April 2026",
+    author: "Toko Nusa team",
+    read: "10 min",
+    date: "April 28, 2026",
     tint: 1
   },
   "kemasan-ulang": {
     slug: "kemasan-ulang",
     num: "№ 05",
-    category: "OPERASI",
-    title: "Kemasan yang",
-    italic: "tahu malu",
+    category: "OPERATIONS",
+    title: "Packaging that",
+    italic: "knows shame",
     excerpt:
-      "Kenapa kami pakai karton daur ulang dan kertas serat, dan ekonomi dibalik keputusan kecil itu.",
+      "Why we use recycled kraft cartons and paper-fibre fill — and the math behind that small decision.",
     body: [
-      "Karton kraft daur ulang harganya 18% lebih mahal dari karton baru. Pita rami harganya tiga kali lipat plester plastik. Tapi mereka tidak hidup 500 tahun di tempat pembuangan.",
-      "Toko Nusa memilih kompromi yang masuk akal: kemasan luar daur ulang penuh, isian kertas serat (bukan styrofoam), label tanpa laminasi. Pembuat juga dikirimkan stok kemasan ini gratis — jadi standar tetap konsisten."
+      "Recycled kraft is 18% more expensive than virgin board. Jute twine is three times the cost of plastic tape. But they don't outlive the user by 500 years in a landfill.",
+      "Toko Nusa picks a sensible compromise: fully recycled outer cartons, paper-fibre fill (no styrofoam), unlaminated labels. We send the same packaging stock to makers for free, so the standard stays consistent across the catalog."
     ],
-    author: "Tim Toko Nusa",
-    read: "4 menit",
-    date: "21 April 2026",
+    author: "Toko Nusa team",
+    read: "4 min",
+    date: "April 21, 2026",
     tint: 4
   },
   "tongkonan-weave": {
     slug: "tongkonan-weave",
     num: "№ 06",
     category: "PORTRAIT",
-    title: "Tongkonan, dan",
-    italic: "tenun yang tinggal",
+    title: "Tongkonan, and the",
+    italic: "weave that remains",
     excerpt:
-      "Perjalanan ke Toraja menemui Ibu Bertha — penenun selendang yang belajar dari neneknya dan menolak benang pabrik.",
+      "A trip to Toraja to meet Ibu Bertha — a weaver who learned from her grandmother and refuses factory yarn.",
     body: [
-      "Bertha menenun di kolong rumah Tongkonan miliknya. Cahaya masuk dari sela papan, lantai tanah dingin, dan suara ATBM-nya berdengung seperti serangga.",
-      "Yang dia tenun adalah selendang — bukan untuk dijual ke turis, tapi sebagai bagian dari upacara. Hingga akhirnya, anak gadisnya pergi ke Makassar untuk kuliah dan ‘kebetulan’ ada teman yang menanyakan harga.",
-      "Sekarang Bertha menenun untuk dua hal: keluarga, dan satu pesanan kecil tiap bulan untuk Toko Nusa. Tidak lebih. Karena, katanya, “Kalau saya tenun cepat-cepat, motifnya marah.”"
+      "Bertha weaves under her Tongkonan house. Light filters in through the wooden slats, the earth floor is cool, and her loom hums like an insect.",
+      "What she weaves are selendang — not for tourists, but for ceremonies. Until her daughter went to Makassar for university and “happened” to have a friend who asked about prices.",
+      "Now Bertha weaves for two purposes: her family, and one small order a month for Toko Nusa. No more. Because, she says, “If I rush the weave, the pattern gets angry.”"
     ],
-    author: "Tim Toko Nusa",
-    read: "7 menit",
-    date: "14 April 2026",
+    author: "Toko Nusa team",
+    read: "7 min",
+    date: "April 14, 2026",
     tint: 2
   }
 };
 
 export async function generateStaticParams() {
   return Object.keys(ARTICLES).map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const article = ARTICLES[slug];
+  if (!article) return { title: "Article · Toko Nusa Journal" };
+  return {
+    title: `${article.title} ${article.italic ?? ""} · Toko Nusa Journal`.trim(),
+    description: article.excerpt
+  };
 }
 
 export default async function JurnalArticlePage({
@@ -146,7 +171,7 @@ export default async function JurnalArticlePage({
     <article style={{ padding: "48px 40px 96px" }}>
       <div style={{ maxWidth: 760, marginInline: "auto" }}>
         <Link href="/jurnal" className="tn-btn-link" style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 32 }}>
-          <ArrowLeft size={14} /> Kembali ke jurnal
+          <ArrowLeft size={14} /> Back to the journal
         </Link>
         <div className="tn-eyebrow" style={{ marginBottom: 14 }}>
           {article.num} · {article.category}
@@ -172,12 +197,19 @@ export default async function JurnalArticlePage({
           <span>·</span>
           <span>{article.date}</span>
           <span>·</span>
-          <span>{article.read} baca</span>
+          <span>{article.read} read</span>
         </div>
       </div>
 
       <div style={{ maxWidth: 980, marginInline: "auto", marginBottom: 48 }}>
-        <PlaceImg label={article.title} tint={article.tint} ratio="16/9" />
+        <PlaceImg
+          label={article.title}
+          tint={article.tint}
+          ratio="16/9"
+          src={JURNAL_IMG[article.slug]}
+          alt={article.title}
+          kenburns
+        />
       </div>
 
       <div style={{ maxWidth: 680, marginInline: "auto" }}>
@@ -209,7 +241,7 @@ export default async function JurnalArticlePage({
 
         <hr className="tn-hr" style={{ margin: "48px 0 24px" }} />
         <div className="tn-label-mono" style={{ fontSize: 11, marginBottom: 16 }}>
-          BACA JUGA
+          READ NEXT
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 18 }} className="related-grid">
           {Object.values(ARTICLES)
@@ -235,7 +267,7 @@ export default async function JurnalArticlePage({
                 >
                   {a.title}
                 </span>
-                <span className="tn-body-sm">{a.read} baca</span>
+                <span className="tn-body-sm">{a.read} read</span>
               </Link>
             ))}
         </div>

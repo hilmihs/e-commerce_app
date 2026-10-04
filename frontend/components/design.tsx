@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 
 export type Tint = 1 | 2 | 3 | 4 | 5 | "dark";
@@ -41,21 +42,43 @@ export function PlaceImg({
   tint = 1,
   ratio = "4/5",
   style,
-  children
+  children,
+  src,
+  alt,
+  kenburns,
+  eager,
+  sizes = "(min-width: 1024px) 50vw, 100vw"
 }: {
   label?: string;
   tint?: Tint;
   ratio?: string;
   style?: CSSProperties;
   children?: ReactNode;
+  src?: string;
+  alt?: string;
+  kenburns?: boolean;
+  eager?: boolean;
+  /** Override responsive sizes hint for next/image. */
+  sizes?: string;
 }) {
   const tintClass = tint === "dark" ? "tn-placeholder-tint-dark" : `tn-placeholder-tint-${tint}`;
   return (
     <div
-      className={`tn-placeholder ${tintClass}`}
-      style={{ aspectRatio: ratio, position: "relative", ...style }}
+      className={`tn-placeholder ${tintClass} ${kenburns ? "tn-kenburns" : ""}`}
+      style={{ aspectRatio: ratio, position: "relative", overflow: "hidden", ...style }}
     >
-      {label && <span style={{ opacity: 0.7 }}>{label}</span>}
+      {src && (
+        <Image
+          src={src}
+          alt={alt ?? label ?? ""}
+          fill
+          sizes={sizes}
+          priority={eager}
+          loading={eager ? "eager" : "lazy"}
+          style={{ objectFit: "cover" }}
+        />
+      )}
+      {!src && label && <span style={{ opacity: 0.7, position: "relative", zIndex: 1 }}>{label}</span>}
       {children}
     </div>
   );
@@ -136,7 +159,7 @@ export function SumRow({
 
 export function Stepper({
   step = 1,
-  steps = ["Alamat", "Pengiriman", "Bayar"]
+  steps = ["Address", "Shipping", "Pay"]
 }: {
   step?: number;
   steps?: string[];

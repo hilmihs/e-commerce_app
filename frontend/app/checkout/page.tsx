@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ShieldCheck, ChevronDown } from "lucide-react";
+import { ShieldCheck, MapPin } from "lucide-react";
 import { checkout, formatCurrency, quoteShipping } from "@/lib/api";
 import { useCart } from "@/lib/cart";
-import type { ShippingQuote } from "@/types/api";
+import { useSession } from "@/lib/session";
+import { useAddresses, type Address } from "@/lib/addresses";
+import type { PaymentMethodId, ShippingQuote } from "@/types/api";
 import { PlaceImg, Stepper, SumRow, Wordmark, pickTint } from "@/components/design";
+import { RouteGuard } from "@/components/RouteGuard";
+import { getSeller } from "@/lib/marketplace";
 
 type FormState = {
   customer_name: string;
@@ -29,12 +33,73 @@ const COURIER_OPTIONS = [
   { value: "tiki", label: "TIKI" }
 ];
 
+type PaymentGroup = {
+  key: string;
+  title: string;
+  badge: string;
+  hint: string;
+  options: { id: PaymentMethodId; label: string }[];
+};
+
+const PAYMENT_GROUPS: PaymentGroup[] = [
+  {
+    key: "qris",
+    title: "QRIS",
+    badge: "QR",
+    hint: "Scan with GoPay, OVO, DANA, ShopeePay, mobile banking",
+    options: [{ id: "qris", label: "QRIS" }]
+  },
+  {
+    key: "va",
+    title: "Virtual Account",
+    badge: "VA",
+    hint: "Pay from your bank's mobile or internet banking",
+    options: [
+      { id: "va_bca", label: "BCA" },
+      { id: "va_mandiri", label: "Mandiri" },
+      { id: "va_bni", label: "BNI" },
+      { id: "va_bri", label: "BRI" }
+    ]
+  },
+  {
+    key: "ewallet",
+    title: "E-Wallet",
+    badge: "EW",
+    hint: "Open the app and approve the payment",
+    options: [
+      { id: "ewallet_gopay", label: "GoPay" },
+      { id: "ewallet_ovo", label: "OVO" },
+      { id: "ewallet_dana", label: "DANA" },
+      { id: "ewallet_shopeepay", label: "ShopeePay" }
+    ]
+  },
+  {
+    key: "card",
+    title: "Credit / Debit Card",
+    badge: "CC",
+    hint: "Visa, Mastercard, JCB · processed via Midtrans",
+    options: [{ id: "card", label: "Card" }]
+  }
+];
+
 export default function CheckoutPage() {
+  return (
+    <RouteGuard allow={["guest", "user"]}>
+      <CheckoutInner />
+    </RouteGuard>
+  );
+}
+
+function CheckoutInner() {
   const router = useRouter();
   const { items, subtotal, clearCart } = useCart();
+  const { session } = useSession();
+  const { addresses } = useAddresses();
   const [quotes, setQuotes] = useState<ShippingQuote[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<ShippingQuote | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>("qris");
   const [loading, setLoading] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
     customer_name: "",
@@ -45,9 +110,76 @@ export default function CheckoutPage() {
     city: "",
     province: "",
     postal_code: "",
-    destination_city_id: "",
+    // Demo mode: any non-empty value satisfies the (now-mocked) shipping API.
+    destination_city_id: "152",
     courier: "jne"
   });
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [formTouched, setFormTouched] = useState(false);
+
+  const defaultAddress = useMemo<Address | null>(
+    () => addresses.find((a) => a.isDefault) ?? addresses[0] ?? null,
+    [addresses]
+  );
+
+  // Prefill from the user's saved default address (and session email) the
+  // first time those become available — but never overwrite edits the user
+  // has already made by hand. We read `form` via setForm's functional updater
+  // so the effect's deps stay primitive-stable and don't loop.
+  const sessionEmail = session.role === "user" ? session.email : "";
+  useEffect(() => {
+    if (formTouched) return;
+    if (!defaultAddress && !sessionEmail) return;
+
+    setForm((current) => {
+      const next = { ...current };
+      let changed = false;
+      if (sessionEmail && !current.customer_email) {
+        next.customer_email = sessionEmail;
+        changed = true;
+      }
+      if (defaultAddress) {
+        const pairs: Array<[keyof FormState, string]> = [
+          ["customer_name", defaultAddress.recipient],
+          ["customer_phone", defaultAddress.phone],
+          ["line1", defaultAddress.line1],
+          ["line2", defaultAddress.line2 ?? ""],
+          ["city", defaultAddress.city],
+          ["province", defaultAddress.province],
+          ["postal_code", defaultAddress.postalCode]
+        ];
+        for (const [key, value] of pairs) {
+          if (!current[key] && value) {
+            next[key] = value;
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : current;
+    });
+
+    if (defaultAddress && !selectedAddressId) {
+      setSelectedAddressId(defaultAddress.id);
+    }
+  }, [defaultAddress, sessionEmail, selectedAddressId, formTouched]);
+
+  function applyAddress(address: Address) {
+    setSelectedAddressId(address.id);
+    setForm((current) => ({
+      ...current,
+      customer_name: address.recipient,
+      customer_phone: address.phone,
+      line1: address.line1,
+      line2: address.line2 ?? "",
+      city: address.city,
+      province: address.province,
+      postal_code: address.postalCode
+    }));
+    setFormTouched(true);
+    // Reset quotes since destination changed.
+    setQuotes([]);
+    setSelectedQuote(null);
+  }
 
   const totalWeight = useMemo(
     () => items.reduce((s, i) => s + (i.product.weight_grams ?? 0) * i.quantity, 0),
@@ -65,12 +197,13 @@ export default function CheckoutPage() {
       const data = await quoteShipping({
         destination_city_id: form.destination_city_id,
         courier: form.courier,
+        city: form.city,
         items: itemPayload
       });
       setQuotes(data);
       setSelectedQuote(data[0] ?? null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Gagal menghitung ongkir.");
+      setError(caught instanceof Error ? caught.message : "Could not calculate shipping.");
     } finally {
       setLoading(false);
     }
@@ -79,7 +212,7 @@ export default function CheckoutPage() {
   async function handleCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedQuote) {
-      setError("Pilih ongkir terlebih dahulu.");
+      setError("Please pick a shipping option first.");
       return;
     }
 
@@ -99,23 +232,32 @@ export default function CheckoutPage() {
           destination_city_id: form.destination_city_id
         },
         shipping_quote: selectedQuote,
+        payment_method: paymentMethod,
         items: itemPayload
       });
+      // Switch to the full-page transition screen FIRST so the user never sees
+      // the "Your cart is empty" branch as we clear and navigate.
+      setTransitioning(true);
       clearCart();
       if (order.snap_redirect_url) {
         window.location.href = order.snap_redirect_url;
       } else {
         router.push(`/payment/${order.order_number}`);
       }
+      // Do not reset transitioning — this page unmounts when the new route lands.
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Checkout gagal.");
-    } finally {
+      setError(caught instanceof Error ? caught.message : "Checkout failed.");
       setLoading(false);
     }
   }
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+    setFormTouched(true);
+  }
+
+  if (transitioning) {
+    return <CheckoutTransition />;
   }
 
   return (
@@ -135,9 +277,9 @@ export default function CheckoutPage() {
         <Link href="/">
           <Wordmark size={26} />
         </Link>
-        <Stepper step={currentStep} steps={["Alamat", "Pengiriman", "Bayar"]} />
+        <Stepper step={currentStep} steps={["Address", "Shipping", "Pay"]} />
         <span className="tn-label-mono" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <ShieldCheck size={14} /> CHECKOUT AMAN
+          <ShieldCheck size={14} /> SECURE CHECKOUT
         </span>
       </header>
 
@@ -147,11 +289,11 @@ export default function CheckoutPage() {
             className="tn-card"
             style={{ padding: 40, textAlign: "center", color: "var(--muted)", maxWidth: 600, margin: "0 auto" }}
           >
-            Cart kosong. Pilih produk dulu dari{" "}
+            Your cart is empty. Pick something from the{" "}
             <Link className="tn-btn-link" href="/">
-              katalog
-            </Link>
-            .
+              catalog
+            </Link>{" "}
+            first.
           </div>
         ) : (
           <form
@@ -160,38 +302,84 @@ export default function CheckoutPage() {
             className="checkout-grid"
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
-              {/* CONTACT */}
-              <Block num="№ 01" title="Kontak" italic="& pembeli">
+              <Block num="№ 01" title="Contact" italic="& buyer">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="form-grid">
-                  <Field label="Nama lengkap" value={form.customer_name} onChange={(v) => set("customer_name", v)} required />
-                  <Field label="No. telepon" value={form.customer_phone} onChange={(v) => set("customer_phone", v)} required />
+                  <Field label="Full name" value={form.customer_name} onChange={(v) => set("customer_name", v)} required />
+                  <Field label="Phone" value={form.customer_phone} onChange={(v) => set("customer_phone", v)} required />
                   <Field label="Email" value={form.customer_email} onChange={(v) => set("customer_email", v)} required full type="email" />
                 </div>
               </Block>
 
-              {/* ADDRESS */}
-              <Block num="№ 02" title="Alamat" italic="pengiriman">
+              <Block
+                num="№ 02"
+                title="Shipping"
+                italic="address"
+                hint={
+                  addresses.length === 0 ? (
+                    <Link href="/account#addresses" className="tn-btn-link" style={{ fontSize: 13 }}>
+                      Save an address in your account →
+                    </Link>
+                  ) : undefined
+                }
+              >
+                {addresses.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      flexWrap: "wrap",
+                      marginBottom: 16
+                    }}
+                  >
+                    {addresses.map((a) => {
+                      const active = selectedAddressId === a.id;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => applyAddress(a)}
+                          className={active ? "tn-chip tn-chip-active" : "tn-chip"}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 13
+                          }}
+                        >
+                          <MapPin size={12} />
+                          {a.label}
+                          {a.isDefault && (
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontFamily: "var(--font-mono)",
+                                letterSpacing: "0.1em",
+                                marginLeft: 4,
+                                opacity: 0.7
+                              }}
+                            >
+                              · DEFAULT
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }} className="form-grid">
-                  <Field label="Alamat (jalan, no., RT/RW)" value={form.line1} onChange={(v) => set("line1", v)} required full />
-                  <Field label="Patokan / unit (opsional)" value={form.line2} onChange={(v) => set("line2", v)} />
-                  <Field label="Kode pos" value={form.postal_code} onChange={(v) => set("postal_code", v)} required />
-                  <Field label="Kota / kabupaten" value={form.city} onChange={(v) => set("city", v)} required />
-                  <Field label="Provinsi" value={form.province} onChange={(v) => set("province", v)} required />
-                  <Field
-                    label="RajaOngkir city ID"
-                    value={form.destination_city_id}
-                    onChange={(v) => set("destination_city_id", v)}
-                    required
-                  />
+                  <Field label="Address line (street, no., neighbourhood)" value={form.line1} onChange={(v) => set("line1", v)} required full />
+                  <Field label="Landmark / unit (optional)" value={form.line2} onChange={(v) => set("line2", v)} />
+                  <Field label="Postal code" value={form.postal_code} onChange={(v) => set("postal_code", v)} required />
+                  <Field label="City / regency" value={form.city} onChange={(v) => set("city", v)} required />
+                  <Field label="Province" value={form.province} onChange={(v) => set("province", v)} required />
                 </div>
               </Block>
 
-              {/* SHIPPING */}
               <Block
                 num="№ 03"
-                title="Metode"
-                italic="pengiriman"
-                hint={`Dihitung via RajaOngkir · berat ${new Intl.NumberFormat("id-ID").format(totalWeight)} g`}
+                title="Shipping"
+                italic="method"
+                hint={`Calculated via RajaOngkir · ${new Intl.NumberFormat("en-US").format(totalWeight)} g`}
               >
                 <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                   {COURIER_OPTIONS.map((c) => (
@@ -211,7 +399,7 @@ export default function CheckoutPage() {
                     onClick={handleQuote}
                     disabled={loading || !form.destination_city_id}
                   >
-                    Hitung ongkir
+                    Get rates
                   </button>
                 </div>
 
@@ -243,7 +431,7 @@ export default function CheckoutPage() {
                           <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                             <span style={{ fontWeight: 500, minWidth: 88 }}>{o.courier.toUpperCase()}</span>
                             <span className="tn-label-mono">{o.service}</span>
-                            <span className="tn-body-sm">· tiba {o.etd ?? "—"} {o.etd && "hari"}</span>
+                            <span className="tn-body-sm">· arrives {o.etd ?? "—"} {o.etd && "days"}</span>
                           </div>
                           <span className="tn-price" style={{ fontSize: 15 }}>
                             {formatCurrency(o.cost)}
@@ -255,51 +443,87 @@ export default function CheckoutPage() {
                 )}
               </Block>
 
-              {/* PAYMENT */}
-              <Block num="№ 04" title="Bayar" italic="dengan" hint="Diproses Midtrans Snap">
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }} className="pay-grid">
-                  {[
-                    { n: "QRIS", d: "Semua e-wallet & m-banking" },
-                    { n: "Virtual Account", d: "BCA, Mandiri, BNI, BRI" },
-                    { n: "Kartu Kredit", d: "Visa, Mastercard, JCB" },
-                    { n: "E-Wallet", d: "GoPay, OVO, ShopeePay, DANA" }
-                  ].map((m, i) => (
-                    <div
-                      key={m.n}
-                      style={{
-                        padding: "18px 16px",
-                        border: "1px solid " + (i === 0 ? "var(--ink)" : "var(--line)"),
-                        background: i === 0 ? "var(--paper-soft)" : "var(--page)",
-                        borderRadius: 4
-                      }}
-                    >
+              <Block num="№ 04" title="Payment" italic="method">
+                <div
+                  style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}
+                  className="pay-grid"
+                >
+                  {PAYMENT_GROUPS.map((group) => {
+                    const selectedInGroup = group.options.find((o) => o.id === paymentMethod);
+                    const active = !!selectedInGroup;
+                    return (
                       <div
+                        key={group.key}
                         style={{
-                          width: 36,
-                          height: 24,
-                          marginBottom: 12,
-                          background: "var(--ink)",
-                          color: "var(--paper)",
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 9,
-                          letterSpacing: "0.1em",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: 2
+                          padding: "18px 18px",
+                          border: "1px solid " + (active ? "var(--ink)" : "var(--line)"),
+                          background: active ? "var(--paper-soft)" : "var(--page)",
+                          borderRadius: 4,
+                          cursor: "pointer"
+                        }}
+                        onClick={() => {
+                          // Picking the group selects its first option.
+                          if (!active) setPaymentMethod(group.options[0].id);
                         }}
                       >
-                        {m.n.split(" ")[0].slice(0, 4).toUpperCase()}
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div
+                            style={{
+                              width: 36,
+                              height: 24,
+                              background: "var(--ink)",
+                              color: "var(--paper)",
+                              fontFamily: "var(--font-mono)",
+                              fontSize: 9,
+                              letterSpacing: "0.1em",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              borderRadius: 2
+                            }}
+                          >
+                            {group.badge}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{group.title}</div>
+                          <input
+                            type="radio"
+                            name="payment_group"
+                            checked={active}
+                            onChange={() => setPaymentMethod(group.options[0].id)}
+                            style={{ marginLeft: "auto", accentColor: "var(--ink)" }}
+                          />
+                        </div>
+                        <div className="tn-body-sm" style={{ marginTop: 8 }}>
+                          {group.hint}
+                        </div>
+                        {active && group.options.length > 1 && (
+                          <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+                            {group.options.map((option) => (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPaymentMethod(option.id);
+                                }}
+                                className={
+                                  paymentMethod === option.id
+                                    ? "tn-chip tn-chip-active"
+                                    : "tn-chip"
+                                }
+                                style={{ fontSize: 12 }}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{m.n}</div>
-                      <div className="tn-body-sm" style={{ marginTop: 2 }}>
-                        {m.d}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <p className="tn-body-sm" style={{ marginTop: 14 }}>
-                  Pemilihan metode akan ditawarkan pada halaman Midtrans Snap setelah pesanan dibuat.
+                  You'll see payment instructions on the next screen after placing your order.
                 </p>
               </Block>
 
@@ -318,15 +542,15 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* summary */}
             <aside style={{ position: "sticky", top: 24, alignSelf: "start" }}>
               <div className="tn-card" style={{ padding: 24 }}>
                 <h3 className="tn-display-5" style={{ marginBottom: 16 }}>
-                  <em style={{ fontStyle: "italic" }}>Pesanan</em> anda
+                  Your <em style={{ fontStyle: "italic" }}>order</em>
                 </h3>
                 {items.map(({ product, quantity }) => {
                   const image = product.images[0]?.url;
                   const tint = pickTint(product.id);
+                  const seller = getSeller(product);
                   return (
                     <div
                       key={product.id}
@@ -366,7 +590,7 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <div className="tn-label-mono" style={{ fontSize: 10 }}>
-                          TOKO NUSA
+                          {seller.name.toUpperCase()}
                         </div>
                         <div
                           style={{
@@ -388,11 +612,11 @@ export default function CheckoutPage() {
                 <div style={{ marginTop: 16 }}>
                   <SumRow k="Subtotal" v={formatCurrency(subtotal)} />
                   <SumRow
-                    k={`Ongkir${selectedQuote ? ` · ${selectedQuote.courier.toUpperCase()} ${selectedQuote.service}` : ""}`}
+                    k={`Shipping${selectedQuote ? ` · ${selectedQuote.courier.toUpperCase()} ${selectedQuote.service}` : ""}`}
                     v={selectedQuote ? formatCurrency(selectedQuote.cost) : "—"}
                     muted
                   />
-                  <SumRow k="PPN sudah termasuk" v="—" muted />
+                  <SumRow k="VAT included" v="—" muted />
                   <hr className="tn-hr" style={{ margin: "12px 0" }} />
                   <SumRow k="Total" v={formatCurrency(total)} strong />
                 </div>
@@ -402,12 +626,12 @@ export default function CheckoutPage() {
                   style={{ width: "100%", marginTop: 18 }}
                   disabled={loading || !selectedQuote}
                 >
-                  {loading ? "Memproses…" : `Bayar sekarang · ${formatCurrency(total)}`}
+                  {loading ? "Processing…" : `Pay now · ${formatCurrency(total)}`}
                 </button>
                 <p className="tn-body-sm" style={{ marginTop: 14, textAlign: "center" }}>
-                  Dengan menekan tombol di atas anda setuju dengan{" "}
+                  By placing this order you agree to our{" "}
                   <a className="tn-btn-link" href="#">
-                    Ketentuan
+                    Terms
                   </a>
                   .
                 </p>
@@ -441,7 +665,7 @@ function Block({
   num: string;
   title: string;
   italic?: string;
-  hint?: string;
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -496,15 +720,62 @@ function Field({
       <div className="tn-eyebrow" style={{ marginBottom: 8 }}>
         {label}
       </div>
-      <div style={{ position: "relative" }}>
-        <input
-          className="tn-input"
-          type={type}
-          value={value}
-          required={required}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </div>
+      <input
+        className="tn-input"
+        type={type}
+        value={value}
+        required={required}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </label>
+  );
+}
+
+function CheckoutTransition() {
+  return (
+    <section
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--paper)",
+        padding: "40px 24px",
+        textAlign: "center"
+      }}
+    >
+      <div style={{ maxWidth: 420 }}>
+        <div
+          aria-hidden
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 999,
+            border: "2px solid var(--line)",
+            borderTopColor: "var(--terracotta)",
+            margin: "0 auto 28px",
+            animation: "tn-spinner 1s linear infinite"
+          }}
+        />
+        <div className="tn-eyebrow" style={{ marginBottom: 12 }}>
+          PLACING YOUR ORDER
+        </div>
+        <h1 className="tn-display-4" style={{ marginBottom: 14 }}>
+          Just <em style={{ fontStyle: "italic" }}>a moment</em>…
+        </h1>
+        <p className="tn-body-sm" style={{ color: "var(--ink-soft)" }}>
+          Generating your order number and payment instructions.
+        </p>
+      </div>
+      <style>{`
+        @keyframes tn-spinner {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [aria-hidden] { animation: none !important; }
+        }
+      `}</style>
+    </section>
   );
 }

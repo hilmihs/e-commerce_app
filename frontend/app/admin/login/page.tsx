@@ -3,28 +3,58 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, ArrowRight } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { saveAdminSession } from "@/lib/admin-session";
+import { useSession, VISIBLE_DEMO_ACCOUNTS, IS_DEV } from "@/lib/session";
 import { Wordmark } from "@/components/design";
+import { RouteGuard } from "@/components/RouteGuard";
 
 export default function AdminLoginPage() {
+  return (
+    <RouteGuard allow={["guest"]}>
+      <AdminLoginInner />
+    </RouteGuard>
+  );
+}
+
+function AdminLoginInner() {
   const router = useRouter();
+  const { signIn, trustSession } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const demoAdmin = VISIBLE_DEMO_ACCOUNTS.find((a) => a.role === "admin");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Backend first — the real Laravel auth is the source of truth.
     try {
       const session = await adminApi.login(email, password);
       saveAdminSession(session);
+      const trust = trustSession({
+        role: "admin",
+        email: session.user.email,
+        name: session.user.name
+      });
+      if (!trust.ok) throw new Error(trust.error);
       router.push("/admin");
+      return;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Login gagal.");
+      // Backend unreachable or rejected. In dev only, allow demo fallback so
+      // the prototype works offline.
+      if (IS_DEV) {
+        const demoResult = signIn("admin", email, password);
+        if (demoResult.ok) {
+          router.push("/admin");
+          return;
+        }
+      }
+      setError(caught instanceof Error ? caught.message : "Sign in failed.");
     } finally {
       setLoading(false);
     }
@@ -49,13 +79,13 @@ export default function AdminLoginPage() {
           <Wordmark size={24} />
         </Link>
         <div className="tn-eyebrow" style={{ marginTop: 28, marginBottom: 8 }}>
-          № 01 · AKSES
+          № 01 · ACCESS
         </div>
         <h1 className="tn-display-4" style={{ marginBottom: 8 }}>
-          Masuk sebagai <em style={{ fontStyle: "italic" }}>admin</em>
+          Sign in as <em style={{ fontStyle: "italic" }}>admin</em>
         </h1>
         <p className="tn-body-sm" style={{ marginBottom: 24 }}>
-          Halaman ini terbatas untuk pengelola Toko Nusa.
+          This area is restricted to Toko Nusa staff.
         </p>
 
         <div style={{ display: "grid", gap: 16 }}>
@@ -106,7 +136,7 @@ export default function AdminLoginPage() {
           style={{ width: "100%", marginTop: 20 }}
           disabled={loading}
         >
-          {loading ? "Memproses…" : "Masuk"}
+          {loading ? "Signing in…" : "Sign in"}
         </button>
 
         <div
@@ -115,9 +145,37 @@ export default function AdminLoginPage() {
         >
           <ShieldCheck size={16} strokeWidth={1.4} style={{ marginTop: 1, color: "var(--ink)" }} />
           <span>
-            Token disimpan di localStorage browser. Untuk produksi, gunakan HTTPS dan logout setelah selesai.
+            Tokens are stored in browser localStorage. Use HTTPS and sign out after each session in production.
           </span>
         </div>
+
+        {demoAdmin && (
+          <div
+            style={{
+              marginTop: 24,
+              padding: 14,
+              background: "var(--paper-soft)",
+              border: "1px solid var(--line)",
+              borderRadius: 4,
+              fontSize: 12,
+              lineHeight: 1.7
+            }}
+          >
+            <div className="tn-label-mono" style={{ marginBottom: 6, fontSize: 11 }}>
+              DEMO ADMIN (frontend-only)
+            </div>
+            <div>Email: <code style={{ fontFamily: "var(--font-mono)" }}>{demoAdmin.email}</code></div>
+            <div>Password: <code style={{ fontFamily: "var(--font-mono)" }}>{demoAdmin.password}</code></div>
+            <button
+              type="button"
+              onClick={() => { setEmail(demoAdmin.email); setPassword(demoAdmin.password); }}
+              className="tn-btn-link"
+              style={{ marginTop: 8, fontSize: 12 }}
+            >
+              Fill demo credentials <ArrowRight size={11} style={{ display: "inline" }} />
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

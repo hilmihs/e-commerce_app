@@ -34,6 +34,18 @@ export type ShippingQuote = {
   weight_grams: number;
 };
 
+export type PaymentMethodId =
+  | "qris"
+  | "va_bca"
+  | "va_mandiri"
+  | "va_bni"
+  | "va_bri"
+  | "ewallet_gopay"
+  | "ewallet_ovo"
+  | "ewallet_dana"
+  | "ewallet_shopeepay"
+  | "card";
+
 export type CheckoutPayload = {
   customer_name: string;
   customer_email: string;
@@ -47,6 +59,7 @@ export type CheckoutPayload = {
     destination_city_id: string;
   };
   shipping_quote: ShippingQuote;
+  payment_method: PaymentMethodId;
   items: Array<{ product_id: number; quantity: number }>;
 };
 
@@ -106,4 +119,96 @@ export type AdminSession = {
     email: string;
     role: string;
   };
+};
+
+export type StoreSettings = {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  logo_url: string | null;
+};
+
+export type ShippingZone = {
+  id: number;
+  name: string;
+  description: string | null;
+  cities: string[];
+  cost: number;
+  etd: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
+export type ShippingZoneInput = {
+  name: string;
+  description?: string | null;
+  cities: string[];
+  cost: number;
+  etd?: string | null;
+  is_active: boolean;
+  sort_order?: number;
+};
+
+export type Seller = {
+  id: number;
+  slug: string;
+  name: string;
+  city: string;
+  verified: boolean;
+  contact_email: string | null;
+  contact_phone: string | null;
+  description: string | null;
+};
+
+export type SellerInput = {
+  slug: string;
+  name: string;
+  city: string;
+  verified: boolean;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  description?: string | null;
+};
+
+export type Promotion = {
+  id: number;
+  code: string;
+  name: string;
+  type: "percentage" | "fixed";
+  value: number;
+  min_purchase: number | null;
+  max_uses: number | null;
+  used_count: number;
+  starts_at: string | null;
+  expires_at: string | null;
+  active: boolean;
+};
+
+export type PromotionInput = {
+  code: string;
+  name: string;
+  type: "percentage" | "fixed";
+  value: number;
+  min_purchase?: number | null;
+  max_uses?: number | null;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  active: boolean;
+};
+
+export type PaymentMethod = {
+  id: number;
+  code: string;
+  label: string;
+  type: "qris" | "va" | "ewallet" | "card";
+  enabled: boolean;
+  sort_order: number;
+};
+
+export type PaymentMethodInput = {
+  label: string;
+  enabled: boolean;
+  sort_order?: number;
 };

@@ -5,20 +5,23 @@ import { useState } from "react";
 import { formatCurrency } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { useToast } from "@/lib/toast";
+import { useWishlist } from "@/lib/wishlist";
 import type { Product } from "@/types/api";
 
 export function AddToCartButton({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const { addItem } = useCart();
   const { push } = useToast();
+  const { has, toggle } = useWishlist();
+  const saved = has(product.id);
   const disabled = !product.stock;
 
   function handleAdd() {
     addItem(product, quantity);
     push({
-      message: `${product.name} ditambahkan ke keranjang.`,
+      message: `${product.name} added to your cart.`,
       href: "/cart",
-      cta: "Lihat",
+      cta: "View",
       tone: "success"
     });
   }
@@ -45,7 +48,7 @@ export function AddToCartButton({ product }: { product: Product }) {
             cursor: "pointer",
             color: "var(--ink)"
           }}
-          aria-label="Kurangi"
+          aria-label="Decrease"
         >
           <Minus size={16} />
         </button>
@@ -62,7 +65,7 @@ export function AddToCartButton({ product }: { product: Product }) {
             cursor: "pointer",
             color: "var(--ink)"
           }}
-          aria-label="Tambah"
+          aria-label="Increase"
         >
           <Plus size={16} />
         </button>
@@ -73,14 +76,29 @@ export function AddToCartButton({ product }: { product: Product }) {
         disabled={disabled}
         onClick={handleAdd}
       >
-        Tambahkan ke keranjang · {formatCurrency(product.price * quantity)}
+        Add to cart · {formatCurrency(product.price * quantity)}
       </button>
       <button
+        type="button"
         className="tn-btn tn-btn-ghost tn-btn-lg"
-        style={{ width: 56, padding: 0 }}
-        aria-label="Wishlist"
+        style={{
+          width: 56,
+          padding: 0,
+          background: saved ? "var(--terracotta)" : undefined,
+          color: saved ? "var(--paper)" : undefined,
+          borderColor: saved ? "var(--terracotta)" : undefined
+        }}
+        aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+        aria-pressed={saved}
+        onClick={() => {
+          toggle(product.id);
+          push({
+            message: saved ? "Removed from wishlist." : "Saved to wishlist.",
+            tone: saved ? "default" : "success"
+          });
+        }}
       >
-        <Heart size={18} />
+        <Heart size={18} fill={saved ? "currentColor" : "none"} />
       </button>
     </div>
   );

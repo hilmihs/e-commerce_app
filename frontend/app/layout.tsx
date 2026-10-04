@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Instrument_Serif, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart";
 import { ToastProvider } from "@/lib/toast";
+import { SessionProvider } from "@/lib/session";
+import { WishlistProvider } from "@/lib/wishlist";
+import { AddressesProvider } from "@/lib/addresses";
 import { AppShell } from "@/components/AppShell";
 
 const serif = Instrument_Serif({
@@ -28,20 +32,42 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Toko Nusa · Kriya Nusantara",
+  title: {
+    default: "Toko Nusa · Indonesian craft, curated",
+    template: "%s · Toko Nusa"
+  },
   description:
-    "Kurator kriya & pangan dari Sabang sampai Merauke. Belanja kurasi langsung dari pembuat, checkout cepat, ongkir transparan."
+    "An independent curator of craft and food from across the Indonesian archipelago. Direct from makers, with fast checkout and transparent shipping.",
+  openGraph: {
+    type: "website",
+    title: "Toko Nusa",
+    description:
+      "An independent curator of craft and food from across the Indonesian archipelago.",
+    siteName: "Toko Nusa"
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="id" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
+    <html
+      lang="id"
+      data-scroll-behavior="smooth"
+      className={`${serif.variable} ${sans.variable} ${mono.variable}`}
+    >
       <body>
-        <ToastProvider>
-          <CartProvider>
-            <AppShell>{children}</AppShell>
-          </CartProvider>
-        </ToastProvider>
+        <SessionProvider>
+          <ToastProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <AddressesProvider>
+                  <Suspense fallback={<>{children}</>}>
+                    <AppShell>{children}</AppShell>
+                  </Suspense>
+                </AddressesProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );

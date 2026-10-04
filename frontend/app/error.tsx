@@ -26,16 +26,16 @@ export default function GlobalError({
     >
       <div style={{ maxWidth: 520 }}>
         <div className="tn-eyebrow" style={{ marginBottom: 16 }}>
-          № 500 · GANGGUAN SEMENTARA
+          № 500 · TEMPORARY HICCUP
         </div>
         <h1 className="tn-display-2" style={{ marginBottom: 18 }}>
-          Ada yang <em style={{ fontStyle: "italic" }}>tersendat</em>.
+          Something <em style={{ fontStyle: "italic" }}>tangled</em>.
         </h1>
         <p
           className="tn-body"
           style={{ maxWidth: 440, marginInline: "auto", marginBottom: 28 }}
         >
-          Kami tidak bisa memuat halaman ini sekarang. Coba ulang atau kembali ke katalog dulu.
+          We couldn't load this page just now. Try again, or head back to the catalog.
         </p>
         <div
           style={{
@@ -46,10 +46,10 @@ export default function GlobalError({
           }}
         >
           <button className="tn-btn" onClick={reset}>
-            Coba ulang
+            Try again
           </button>
           <Link className="tn-btn tn-btn-ghost" href="/">
-            Ke katalog
+            To the catalog
           </Link>
         </div>
         {error.digest && (

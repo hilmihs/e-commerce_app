@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, BarChart3 } from "lucide-react";
-import { AdminGuard } from "@/components/AdminGuard";
+import { AdminGuard, DemoModeBanner } from "@/components/AdminGuard";
 import { AdminShell } from "@/components/AdminShell";
 import { adminApi, formatCurrency } from "@/lib/api";
 import type { AdminSession, OrderSummary, Product } from "@/types/api";
@@ -20,12 +20,12 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending_payment: "Menunggu bayar",
-  paid: "Dibayar",
-  processing: "Dikemas",
-  shipped: "Dikirim",
-  completed: "Selesai",
-  cancelled: "Batal"
+  pending_payment: "Pending payment",
+  paid: "Paid",
+  processing: "Packing",
+  shipped: "Shipped",
+  completed: "Completed",
+  cancelled: "Cancelled"
 };
 
 function Sparkline({ data, color = "var(--ink)" }: { data: number[]; color?: string }) {
@@ -97,16 +97,16 @@ function BarChart({ data }: { data: number[] }) {
           letterSpacing: "0.06em"
         }}
       >
-        <span>14 hari lalu</span>
-        <span>1 minggu lalu</span>
-        <span>Hari ini</span>
+        <span>14 days ago</span>
+        <span>1 week ago</span>
+        <span>Today</span>
       </div>
     </div>
   );
 }
 
 function todayLabel() {
-  return new Date().toLocaleDateString("id-ID", {
+  return new Date().toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -114,21 +114,31 @@ function todayLabel() {
   });
 }
 
-function Dashboard({ session }: { session: AdminSession }) {
+function Dashboard({ session, isDemo }: { session: AdminSession; isDemo: boolean }) {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [today, setToday] = useState("");
 
   useEffect(() => {
+    // Defer locale-formatted date to client to avoid SSR/client timezone mismatch.
+    setToday(todayLabel());
+  }, []);
+
+  useEffect(() => {
+    // In demo mode the backend token is a stub; calling adminApi would 401.
+    // The dashboard then renders with zero data — KPIs show 0, recent lists
+    // are empty. The banner explains why.
+    if (isDemo) return;
     Promise.all([adminApi.orders(session.token), adminApi.products(session.token)])
       .then(([o, p]) => {
         setOrders(o);
         setProducts(p);
       })
       .catch((caught) =>
-        setError(caught instanceof Error ? caught.message : "Gagal memuat dashboard.")
+        setError(caught instanceof Error ? caught.message : "Couldn't load the dashboard.")
       );
-  }, [session.token]);
+  }, [session.token, isDemo]);
 
   const kpis = useMemo(() => {
     const totalRev = orders.filter((o) => o.payment_status === "paid").reduce((s, o) => s + o.total, 0);
@@ -160,19 +170,20 @@ function Dashboard({ session }: { session: AdminSession }) {
 
   return (
     <AdminShell
-      subtitle={todayLabel()}
+      subtitle={today}
       title={
         <>
-          Selamat datang,{" "}
+          Welcome,{" "}
           <em style={{ fontStyle: "italic" }}>{session.user.name.split(" ")[0]}</em>.
         </>
       }
       action={
         <Link href="/admin/products" className="tn-btn">
-          + Produk baru
+          + New product
         </Link>
       }
     >
+      {isDemo && <DemoModeBanner />}
       {error && (
         <div
           style={{
@@ -200,30 +211,30 @@ function Dashboard({ session }: { session: AdminSession }) {
       >
         {[
           {
-            l: "Pendapatan · all-time",
+            l: "Revenue · all-time",
             v: formatCurrency(kpis.totalRev),
-            d: `dari ${kpis.paid} pesanan dibayar`,
+            d: `from ${kpis.paid} paid orders`,
             tone: "var(--success)",
             spark: sparkRevenue
           },
           {
-            l: "Pesanan baru",
+            l: "New orders",
             v: String(kpis.pending),
-            d: "menunggu pembayaran",
+            d: "awaiting payment",
             tone: "var(--terracotta)",
             spark: sparkOrders
           },
           {
-            l: "Rata-rata keranjang",
+            l: "Average basket",
             v: formatCurrency(kpis.avg),
-            d: "per pesanan",
+            d: "per order",
             tone: "var(--muted)",
             spark: [6, 7, 6, 7, 7, 6, 7]
           },
           {
-            l: "Stok kritis",
+            l: "Low stock",
             v: String(kpis.lowStock),
-            d: kpis.lowStock > 0 ? "produk dengan sisa < 6" : "Semua stok aman",
+            d: kpis.lowStock > 0 ? "items with < 6 left" : "All stock healthy",
             tone: kpis.lowStock > 0 ? "var(--danger)" : "var(--success)",
             spark: [9, 8, 7, 6, 5, 5, 5]
           }
@@ -270,11 +281,11 @@ function Dashboard({ session }: { session: AdminSession }) {
             }}
           >
             <h3 className="tn-display-5">
-              <em style={{ fontStyle: "italic" }}>Distribusi</em> nilai
+              Revenue <em style={{ fontStyle: "italic" }}>distribution</em>
             </h3>
             <div style={{ display: "flex", gap: 6 }}>
-              <span className="tn-chip tn-chip-active">14 hari</span>
-              <span className="tn-chip">30 hari</span>
+              <span className="tn-chip tn-chip-active">14 days</span>
+              <span className="tn-chip">30 days</span>
               <span className="tn-chip">YTD</span>
             </div>
           </div>
@@ -283,10 +294,10 @@ function Dashboard({ session }: { session: AdminSession }) {
 
         <div className="tn-card" style={{ padding: 24 }}>
           <h3 className="tn-display-5" style={{ marginBottom: 18 }}>
-            <em style={{ fontStyle: "italic" }}>Produk</em> teratas
+            Top <em style={{ fontStyle: "italic" }}>products</em>
           </h3>
           {topProducts.length === 0 && (
-            <p className="tn-body-sm">Belum ada data produk.</p>
+            <p className="tn-body-sm">No product data yet.</p>
           )}
           {topProducts.map((p, i) => {
             const image = p.images[0]?.url;
@@ -316,7 +327,7 @@ function Dashboard({ session }: { session: AdminSession }) {
                     {p.name}
                   </div>
                   <div className="tn-body-sm" style={{ fontSize: 11 }}>
-                    Stok {p.stock}
+                    Stock {p.stock}
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -341,10 +352,10 @@ function Dashboard({ session }: { session: AdminSession }) {
           }}
         >
           <h3 className="tn-display-5">
-            Pesanan <em style={{ fontStyle: "italic" }}>terbaru</em>
+            Latest <em style={{ fontStyle: "italic" }}>orders</em>
           </h3>
           <Link href="/admin/orders" className="tn-btn-link" style={{ fontSize: 13 }}>
-            Semua pesanan <ArrowRight size={13} style={{ display: "inline" }} />
+            All orders <ArrowRight size={13} style={{ display: "inline" }} />
           </Link>
         </div>
         <div style={{ overflowX: "auto" }}>
@@ -359,7 +370,7 @@ function Dashboard({ session }: { session: AdminSession }) {
                   textTransform: "uppercase"
                 }}
               >
-                {["Nomor", "Status", "Bayar", "Total", ""].map((h, i) => (
+                {["Number", "Status", "Payment", "Total", ""].map((h, i) => (
                   <th
                     key={i}
                     style={{
@@ -422,7 +433,7 @@ function Dashboard({ session }: { session: AdminSession }) {
                       className="tn-btn-link"
                       style={{ fontSize: 12 }}
                     >
-                      Buka
+                      Open
                     </Link>
                   </td>
                 </tr>
@@ -432,7 +443,7 @@ function Dashboard({ session }: { session: AdminSession }) {
                   <td colSpan={5} style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
                     <BarChart3 size={20} style={{ marginBottom: 8 }} />
                     <br />
-                    Belum ada pesanan.
+                    No orders yet.
                   </td>
                 </tr>
               )}
@@ -455,5 +466,9 @@ function Dashboard({ session }: { session: AdminSession }) {
 }
 
 export default function AdminHomePage() {
-  return <AdminGuard>{(session) => <Dashboard session={session} />}</AdminGuard>;
+  return (
+    <AdminGuard>
+      {(session, { isDemo }) => <Dashboard session={session} isDemo={isDemo} />}
+    </AdminGuard>
+  );
 }
